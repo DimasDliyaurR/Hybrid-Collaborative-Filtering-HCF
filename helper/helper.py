@@ -14,6 +14,9 @@ List index
 def indexOfZero (data1,data2):
     return [i for i in range(len(data2)) if data1[i] == 0 or data2[i] == 0]
 
+def indexOfNonZero(data):
+    return [i for i in range(len(data)) if data[i] > 0]
+
 """
 Memeriksa index yang bernilai 0 dari sebuah list
 

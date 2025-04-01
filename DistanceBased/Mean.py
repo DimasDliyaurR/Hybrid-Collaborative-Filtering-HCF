@@ -1,37 +1,40 @@
 import pandas as pd
 import helper.helper as hp
-
-class Mean() :
+import numpy as np
+from MatrixRating import MatrixRating
+class Mean(MatrixRating) :
     '''
-    Calculation of mean of user-item matrix rating
-    
+    Measurement of mean of the user-item matrix rating
+
     Args:
+    -----
         data : matrix rating
-        opsional : 
+        opsional : Determinate based of threating matrix such a , user-based or item-based
 
     Attributes:
-    ----------
+    -----------
         matrix : user-item matrix rating
         result_mean : Result mean of matrix rating
 
     Methods:
     --------
         numerator(self,vector)
-            Sum the vector as a numerator of calculation mean
-        
+            Sum the vector as a numerator of measurement mean
+
         denominator(self,vector)
-            Count the vector except number of 0 as a denominator of calculation mean
+            Determinate the number of member vector except of zero value
 
         mean_calculation(self)
-            Calculation mean to user-item matrix rating
+            Measurement mean to user-item matrix rating
     '''
     def __init__(self,data,*,opsional="user-based"):
-        self.matrix = data if opsional == "user-based" else hp.reverseMatrix(data)
+        self.opsional = opsional
+        self.matrix = np.array(data) if opsional == "user-based" else hp.reverseMatrix(np.array(data))
         self.result_mean = self.mean_calculation()
         self.result_mean_centered = self.mean_centered_calculation()
 
     def __numerator(self,vector) -> int:
-        return sum([i for i in vector])
+        return sum(vector)
 
     def __denominator(self,vector) -> int:
         return len([i for i in vector if i != 0])
@@ -47,8 +50,8 @@ class Mean() :
                 for index,vector in enumerate(self.matrix)
             ]
 
-    def show(self) :
+    def show_mean(self) :
         return {
             "mean" : pd.DataFrame(self.result_mean),
-            "mean_centered" : pd.DataFrame(self.result_mean_centered)
+            "mean_centered" : pd.DataFrame(self.result_mean_centered if self.opsional == "user-based" else hp.reverseMatrix(self.result_mean_centered))
         }

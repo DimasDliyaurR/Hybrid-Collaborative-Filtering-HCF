@@ -1,5 +1,5 @@
 
 from .Mean import Mean
-from .DistanceBased import DistanceBased
+from .Similarity import Similarity
 
-__all__ = ["Mean","DistanceBased"]
+__all__ = ["Mean","Similarity"]

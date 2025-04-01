@@ -1,3 +1,3 @@
-from .CollaborativeFiltering import CollaborativeFiltering as HCF
+from .HybridCollaborativeFiltering import HybridCollaborativeFiltering as HCF
 
 __all__ = ["HCF"]

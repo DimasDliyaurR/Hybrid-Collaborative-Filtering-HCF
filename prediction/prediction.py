@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import helper.helper as hp
+import time
 
 class Prediction:
     """
@@ -82,7 +83,7 @@ class Prediction:
             self.meanListBrother = meanListBrother
             self.mean_centered_result_brother = mean_centered_result_brother
         self.mean_centered = meanC
-        self.data = data
+        self.data = np.array(data)
         self.k = k
         self.meanList = meanList
         self.opsional = opsional
@@ -159,9 +160,10 @@ class Prediction:
         indexZero = hp.checkIndexZeroOfData(data=hp.reverseMatrix(data) if opsional == "user-based" else data, fixIndex=indexUser if opsional == "user-based" else index, indexUser=indexUser if opsional == "item-based" else index,maxIndex=len(neighborhood))
 
         indexOfNeighborhood = list(np.delete(hp.createList(0, len(neighborhood[0]) - 1), indexZero).tolist())
-
-        neighborhood = list(np.delete(neighborhood[indexUser if opsional == "user-based" else index], indexZero).tolist())
-
+      
+        # neighborhood = list(np.delete(neighborhood[indexUser if opsional == "user-based" else index], indexZero).tolist())
+        neighborhood = list(np.delete((neighborhood[indexUser]) if opsional == "user-based" else hp.reverseMatrix(neighborhood)[index],indexZero).tolist())
+        
         lengthLoop = len(neighborhood)
         for i in range(lengthLoop - 2, -1, -1):
             indexFlag = i
@@ -185,6 +187,7 @@ class Prediction:
             (meanCentered[indexUser if opsional ==  "item-based" else index][i]) 
             for i in indexOfNeighborhood[0:k]
         ]
+
         return [neighborhood[0:k], meanCenteredBasedIndexNeighborhood ]
 
     def prediction_calculation(self, userTarget, item) -> float:
@@ -205,6 +208,7 @@ class Prediction:
         """
         target = self.selectedNeighborhood(self.similarity, item, userTarget, self.k, self.data, self.mean_centered if not self.twins else hp.reverseMatrix(self.mean_centered_result_brother), opsional=self.opsional, twins=self.twins)
         average = self.meanList[userTarget if self.opsional == "user-based" else item] if not self.twins else (self.meanListBrother[userTarget if self.opsional == "user-based" else item])
+        
         numerator = self.__numerator(target[0], target[1])
         denom = self.__denominator(target[0])
         result = (average + (numerator / denom)) if denom != 0 else 0
