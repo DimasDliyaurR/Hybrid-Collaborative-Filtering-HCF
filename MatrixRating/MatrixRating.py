@@ -1,6 +1,7 @@
 import numpy as np 
 import pandas as pd
 from helper.helper import reverseMatrix
+from operator import itemgetter
 
 class MatrixRating():
     
@@ -13,12 +14,12 @@ class MatrixRating():
             data : str | list[list[float]]
                 The path of data or Data matrix
 
-            reverseData : list[list[float]]
+            reverseMatrixRating : list[list[float]]
                 Reverse of matrix rating
         """
-        self.matrix = matrix
-        self.data = self.processData() if type(matrix) is str else matrix
-        self.reverseData = reverseMatrix(self.data)
+        self.matrixRating = self.__processData(matrix) if type(matrix) is str else matrix
+        self.reverseMatrixRating = reverseMatrix(self.matrixRating)
+        
     
     def getItem(self,user : int, *, interacted : bool = True) -> list[float]:
         """
@@ -35,7 +36,7 @@ class MatrixRating():
         Returns :
             list[float] : Set of item
         """
-        return [i for i in range(len(self.data[user])) if self.data[user][i] != 0] if interacted else [i for i in range(len(self.data[user])) if self.data[user][i] == 0]
+        return [i for i in range(len(self.matrixRating[user])) if self.matrixRating[user][i] != 0] if interacted else [i for i in range(len(self.matrixRating[user])) if self.matrixRating[user][i] == 0]
 
     def getUser(self,item : int,*,interacted: bool=True) -> list[float] :
         """
@@ -53,9 +54,16 @@ class MatrixRating():
         -------
             list[float] : Set of item
         """
-        return [i for i in range(len(self.reverseData[item])) if self.reverseData[item][i] != 0] if interacted else [i for i in range(len(self.reverseData[item])) if self.reverseData[item][i] == 0]
+        return [i for i in range(len(self.reverseMatrixRating[item])) if self.reverseMatrixRating[item][i] != 0] if interacted else [i for i in range(len(self.reverseMatrixRating[item])) if self.reverseMatrixRating[item][i] == 0]
 
-    def processData(self) -> list[list[float]]:
+    def getItemWithValue(self,index : int) -> list[int] :
+        return list(itemgetter(*self.getItem(index))(self.matrixRating[index])) if len(self.getItem(index)) > 1 else [self.matrixRating[index][self.getItem(index)[0]]] 
+    
+    def getUserWithValue(self,index : int) -> list[int] :
+        return list(itemgetter(*self.getUser(index))(self.reverseMatrixRating[index])) if len(self.getUser(index)) > 1 else [self.reverseMatrixRating[index][self.getUser(index)[0]]] 
+
+    @staticmethod
+    def __processData(matrix) -> list[list[float]]:
         """
         Convert Dataset into Matriks
         -----------------------------------
@@ -65,7 +73,7 @@ class MatrixRating():
             list[list[float]] : Set of user
         """
 
-        data = pd.read_csv(self.matrix,sep="\t", names=["user_id","item_id","rating","timestamp"])
+        data = pd.read_csv(matrix,sep="\t", names=["user_id","item_id","rating","timestamp"])
 
         matrix_rating = pd.DataFrame(np.zeros((943,1682)),index=list(range(1,944)),columns=list(range(1,1683))).rename_axis(index="user_id",columns="item_id")
         data_old = data.pivot_table(index="user_id",columns="item_id",values="rating")
@@ -83,4 +91,4 @@ class MatrixRating():
         ------
             Pandas
         """
-        return pd.DataFrame(self.data)
+        return pd.DataFrame(self.matrixRating)

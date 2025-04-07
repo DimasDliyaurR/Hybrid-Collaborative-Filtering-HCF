@@ -1,40 +1,48 @@
 import DistanceBased as SDB
 import prediction as P
-import helper.helper as hp
 from typing_extensions import override
 import pandas as pd
+from helper.helper import reverseMatrix
+from MatrixRating import MatrixRating
 
-class DiceCoefficient(SDB.Similarity,SDB.Mean,P.Prediction) :
+
+class DiceCoefficient(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
     
     def __init__(self, data, *, opsional="user-based",k=2):
-        SDB.Mean.__init__(self,data,opsional=opsional)
+        MatrixRating.__init__(self,data)
+        SDB.Mean.__init__(self,self.matrixRating, reverseMatrix(self.matrixRating),opsional=opsional)
+        self.__opsional = opsional
+        self.__data = self.matrixRating if opsional == "user-based" else self.reverseMatrixRating
         self.result_similarity = self.main_calculation()
-        P.Prediction.__init__(self,self.result_mean_centered,self.result_similarity,data,meanList=self.result_mean,opsional=opsional,k=k)
+        P.Prediction.__init__(self,data,opsional,self.result_similarity,k=k)
 
     @override
-    def numerator(self, vector1:list, vector2:list) -> int:
-        return 2*len( set(hp.indexOfNonZero(vector1)) & set(hp.indexOfNonZero(vector2)) )
+    def numerator(self, A:list, B:list) -> float:
+        return 2*len( (set(self.getItem(A)) & set(self.getItem(B))) ) if self.__opsional == "user-based" else 2*len( (set(self.getUser(A)) & set(self.getUser(B))) )
 
     @override
-    def denominator(self, vector1:list, vector2:list) -> int:
-        return len( set(hp.indexOfNonZero(vector1))) + len( set(hp.indexOfNonZero(vector2)) )
+    def denominator(self, A:list, B:list) -> float:
+        return len( (self.getItem(A))) + len( self.getItem(B)) if self.__opsional == "user-based" else len(self.getUser(A)) + len( self.getUser(B))
 
     @override
-    def similarity_calculation(self,index1: list, index2: list, matrix : list[float]) -> list[float]:
-        return self.numerator(matrix[index1],matrix[index2]) / self.denominator(matrix[index1],matrix[index2])
+    def similarity_calculation(self,A: list, B: list) -> list[float]:
+        return self.numerator(A,B) / self.denominator(A,B)
 
     @override
     def main_calculation(self):
-        result = [[] for _ in range(len(self.matrix))]
+        result = [[] for _ in range(len(self.__data))]
 
-        for i in range(len(self.matrix)):
-            for j in range(i, len(self.matrix)):
+        for i in range(len(self.__data)):
+            if i % 10 == 0 :
+                print(f"Sim({i})")
+            for j in range(i, len(self.__data)):
                 if i == j:
                     result[i].append(1)
                     continue
-                similarity_result = self.similarity_calculation(i, j, self.matrix)
+                similarity_result = self.similarity_calculation(i, j)
                 result[i].append(similarity_result)
                 result[j].append(similarity_result)
+        print("Sim selesai")
         return result
 
     def similarity_result(self) -> list[list[float]]:

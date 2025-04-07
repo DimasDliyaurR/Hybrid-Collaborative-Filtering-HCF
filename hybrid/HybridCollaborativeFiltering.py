@@ -3,9 +3,9 @@ import prediction as p
 
 class HybridCollaborativeFiltering() :
 
-    def __init__(self,data : list[list[float]], similarity : "p.prediction",*, gamma_user : float,k : list, N : int = 2):
+    def __init__(self,data : list[list[float]], similarity : "p.prediction",*, gamma : float,k : list, N : int = 2):
         self.matrix = data
-        self.gamma_user = gamma_user
+        self.gamma = gamma
         self.N = N
         self.user_based = similarity(self.matrix,opsional="user-based",k=k[0])
         self.item_based = similarity(self.matrix,opsional="item-based",k=k[1])
@@ -15,9 +15,12 @@ class HybridCollaborativeFiltering() :
         self.topN = self.get_top_n()
 
     def fusion(self,outer : int,inner : int) -> float:
-        return (self.gamma_user * self.prediction_user_based[outer][inner] + (1-self.gamma_user) * self.prediction_item_based[outer][inner])
+        return (self.gamma * self.prediction_user_based[outer][inner] + (1-self.gamma) * self.prediction_item_based[outer][inner])
     
     def main_calculation(self) -> list[list[float]]:
+         print(self.matrix)
+         print(len(self.matrix))
+         print(len(self.matrix[0]))
          return [
             [
                 (self.fusion(outer,inner) if self.matrix[outer][inner] == 0 else self.matrix[outer][inner])

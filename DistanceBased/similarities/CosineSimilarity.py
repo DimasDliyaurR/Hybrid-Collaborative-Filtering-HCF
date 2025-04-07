@@ -1,52 +1,60 @@
 import cmath
 
-import numpy as np
-import helper.helper as hp
 import DistanceBased as SDB
 import prediction as P
 from typing_extensions import override
 import pandas as pd
+from helper.helper import reverseMatrix
+from MatrixRating import MatrixRating
+from operator import mul,itemgetter
 
-class CosineSimilarity (SDB.Similarity,SDB.Mean,P.Prediction) :
+class CosineSimilarity (SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
 
-    def __init__(self, data, *, opsional="user-based",k=2):
-        SDB.Mean.__init__(self,data,opsional=opsional)
+    def __init__(self, data,*, opsional="user-based",k=2):
+        MatrixRating.__init__(self,data)
+        SDB.Mean.__init__(self,self.matrixRating, reverseMatrix(self.matrixRating),opsional=opsional)
+        self.opsional = opsional
+        self.__data = self.matrixRating if opsional == "user-based" else self.reverseMatrixRating
         self.result_similarity = self.main_calculation()
-        P.Prediction.__init__(self,self.result_mean_centered,self.result_similarity,data,meanList=self.result_mean,opsional=opsional,k=k)
+        P.Prediction.__init__(self,data,opsional,self.result_similarity,k=k)
 
     @override
-    def numerator(self,vector1 : list, vector2 : list) -> int:
-        return sum((vector1[i] * vector2[i]) for i in range(len(vector1)))
+    def numerator(self,u:int,v:int, commonlyRated : list[int]) -> float:
+        if len(commonlyRated) == 0 :
+            return 0
+        return sum(map(mul, list(itemgetter(*commonlyRated)(self.__data[u])) , list(itemgetter(*commonlyRated)(self.__data[v])) )) if len(commonlyRated) > 1 else self.__data[u][commonlyRated[0]] * self.__data[v][commonlyRated[0]]
 
     @override
-    def denominator(self,vector1 : list, vector2: list) -> int:
-        return cmath.sqrt(sum((vector1[i]**2) for i in range(len(vector1)))) * cmath.sqrt(sum((vector2[i]**2) for i in range(len(vector2))))
+    def denominator(self,u : int,v : int, set1 : list[int] ,set2 : list[int]) -> float:
+        if len(set1) == 0 and len(set2) == 0 :
+            return 0
+        return cmath.sqrt( sum(list(map(lambda x : x**2, itemgetter(*set1)(self.__data[u]) ))) if len(set1) > 1 else self.__data[u][set1[0]]**2 ) * cmath.sqrt(sum(list(map(lambda x : x**2,itemgetter(*set2)(self.__data[v])) )) if len(set2) > 1 else self.__data[v][set2[0]]**2)
 
     @override
-    def similarity_calculation(self, u, v, matrix):
-        matrix_filtered = [
-                [matrix[u][mc1]for mc1 in range(len(matrix[u]))],
-                [matrix[v][mc2]for mc2 in range(len(matrix[v]))],
-            ]
+    def similarity_calculation(self, u : int, v : int):
 
-        vector1 = np.delete(matrix_filtered[0],hp.indexOfZero(matrix[u],matrix[v])).tolist()
-        vector2 = np.delete(matrix_filtered[1],hp.indexOfZero(matrix[u],matrix[v])).tolist()
+        set1 = self.getItem(u) if self.opsional == "user-based" else self.getUser(u)
+        set2 = self.getItem(v) if self.opsional == "user-based" else self.getUser(v)
+        commonlyRated = list( set(set1) & set(set2) )
 
-        denominator = self.denominator(matrix[v],matrix[u]).real
-        numerator = self.numerator(vector1,vector2).real
+        numerator = self.numerator(u,v, commonlyRated).real
+        denominator = self.denominator(u,v, set1, set2).real
 
         return (numerator / denominator) if denominator != 0 and numerator != 0 else 0
 
     @override
     def main_calculation(self):
-        result = [[] for _ in range(len(self.matrix))]
+        result = [[] for _ in range(len(self.__data))]
         
-        for i in range(len(self.matrix)): 
-            for j in range(i, len(self.matrix)):
+        for i in range(len(self.__data)): 
+            if i % 10 == 0 :
+                print(f"Sim({i})")
+            for j in range(i, len(self.__data)):
+                # print(f"Sim({type(j)})")
                 if i == j:
                     result[i].append(1)
                     continue
-                similarity_result = self.similarity_calculation(i, j, self.matrix)
+                similarity_result = self.similarity_calculation(int(i), int(j))
                 result[i].append(similarity_result)
                 result[j].append(similarity_result)
         print("Sim : Selesai")
