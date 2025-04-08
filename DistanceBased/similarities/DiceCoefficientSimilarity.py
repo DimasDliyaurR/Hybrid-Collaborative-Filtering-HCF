@@ -18,15 +18,19 @@ class DiceCoefficient(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
 
     @override
     def numerator(self, A:list, B:list) -> float:
-        return 2*len( (set(self.getItem(A)) & set(self.getItem(B))) ) if self.__opsional == "user-based" else 2*len( (set(self.getUser(A)) & set(self.getUser(B))) )
+        return 2*len(list( A & B ))
 
     @override
     def denominator(self, A:list, B:list) -> float:
-        return len( (self.getItem(A))) + len( self.getItem(B)) if self.__opsional == "user-based" else len(self.getUser(A)) + len( self.getUser(B))
+        return len(A) + len(B)
 
     @override
-    def similarity_calculation(self,A: list, B: list) -> list[float]:
-        return self.numerator(A,B) / self.denominator(A,B)
+    def similarity_calculation(self,A: int, B: int) -> float :
+
+        setA = set(self.getItem(A) if self.__opsional == "user-based" else self.getUser(A))
+        setB = set(self.getItem(B) if self.__opsional == "user-based" else self.getUser(B))
+        
+        return self.numerator(setA,setB) / self.denominator(setA,setB)
 
     @override
     def main_calculation(self):
