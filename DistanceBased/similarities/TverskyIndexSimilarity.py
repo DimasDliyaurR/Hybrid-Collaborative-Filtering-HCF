@@ -1,46 +1,140 @@
 import DistanceBased as SDB
 import prediction as P
-import helper.helper as hp
 from typing_extensions import override
 import pandas as pd
+from numpy import transpose
+from MatrixRating import MatrixRating
+from operator import mul,itemgetter
+import os
+import joblib
+from Evaluation import NDCG
 
-class TverskyIndex(SDB.Similarity,SDB.Mean,P.Prediction) :
+class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
     
-    def __init__(self, data, *, opsional="user-based",k=2,alpha=0.7,beta=0.2):
-        SDB.Mean.__init__(self,data,opsional=opsional)
-        self.beta = beta
-        self.alpha = alpha
-        self.result_similarity = self.main_calculation()
-        P.Prediction.__init__(self,self.result_mean_centered,self.result_similarity,data,meanList=self.result_mean,opsional=opsional,k=k)
+    def __init__(self, data, *, N : int|None = None, toyData : bool|None = False, opsional="user-based",k=2,alpha_1=0.7,alpha_2=0.2):
+        SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
+        
+        self.alpha_1 = alpha_1
+        self.alpha_2 = alpha_2
+
+        if not self.toyData :
+            if N is None :
+                raise ValueError("NDCG parameter is missing")
+            
+            path_file = "cache/tversky_index/" + ("user_based" if self.opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/tversky_index_similarity.joblib"
+            path_file_prediction = "cache/tversky_index/" + ("user_based" if self.opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/prediction/{k}/tversky_index_prediction.joblib"
+            print(os.path.exists(path_file))
+            print(path_file)
+            print(os.path.exists(path_file_prediction))
+            print(path_file_prediction)
+            if os.path.exists(path_file) :
+                self.result_similarity = joblib.load(path_file)
+            else :
+                print("Sim Selesai")
+                self.result_similarity = self.main_calculation()
+                print("Sim Mulai")
+                joblib.dump(self.result_similarity,path_file)
+            # NDCG.__init__(self,data,opsional,self.result_similarity,N=N, path_file=path_file_prediction,k=k,toyData=toyData)
+        else :
+            print("Sim Mulai")
+            self.result_similarity = self.main_calculation()
+            print("Sim Selesai")
+            P.Prediction.__init__(self,data,opsional,self.result_similarity,k=k,toyData=toyData)
 
     @override
-    def numerator(self, vector1:list, vector2:list) -> int:
-        return len( set(hp.indexOfNonZero(vector1)) & set(hp.indexOfNonZero(vector2)) )
+    def numerator(self, A:list, B:list) -> list[float]:
+        return len( set(A) & set(B) )
 
     @override
-    def denominator(self, vector1:list, vector2:list) -> int:
-        return len( set(hp.indexOfNonZero(vector1)) & set(hp.indexOfNonZero(vector2)) ) + (   self.alpha * len( set(hp.indexOfNonZero(vector1)) - set(hp.indexOfNonZero(vector2)) ) + ( self.beta * len( set(hp.indexOfNonZero(vector2)) - set(hp.indexOfNonZero(vector1)) ) ) )
-
+    def denominator(self, A:list, B:list) -> list[float]:
+        return len( set(A) & set(B) ) + (self.alpha_1 * len( set(A) - set(B) )) + self.alpha_2 * len( set(B) - set(A) )
+        
     @override
-    def similarity_calculation(self,index1: list, index2: list, matrix : list[float]) -> list[float]:
-        return self.numerator(matrix[index1],matrix[index2]) / self.denominator(matrix[index1],matrix[index2])
+    def similarity_calculation(self,A, B, indexTrain : int|None = None) -> float :
+        setA = set(self.getItem(A,indexTrain) if self.opsional == "user-based" else self.getUser(A,indexTrain))
+        setB = set(self.getItem(B,indexTrain) if self.opsional == "user-based" else self.getUser(B,indexTrain))
+
+        denom = self.denominator(setA,setB).real
+        
+        return (self.numerator(setA,setB).real / denom) if denom != 0 else 0
+    
+    def checkIfSymmetric(self) -> bool :
+        return self.alpha_1 == self.alpha_2
 
     @override
     def main_calculation(self):
-        result = [[] for _ in range(len(self.matrix))]
+        if self.toyData :
+            matrix = self.matrixRating if self.opsional == "user-based" else self.reverseMatrixRating
+            result = [[] for _ in range(len(matrix))]
+            
+            if self.checkIfSymmetric() :
+                for i in range(len(matrix)):
+                    for j in range(i,len(matrix)):
+                        if i == j:
+                            result[i].append(1)
+                            continue
+                        similarity_result = self.similarity_calculation(int(i), int(j))
+                        result[i].append(similarity_result)
+                        result[j].append(similarity_result)
+                return result
+            
+            for i in range(len(matrix)):
+                for j in range(len(matrix)):
+                    if i == j:
+                        result[i].append(1)
+                        continue
+                    similarity_result = self.similarity_calculation(int(i), int(j))
+                    result[i].append(similarity_result)
+            return result
+            
+        else :
+            if self.checkIfSymmetric() :
+                result = []
+                for indexTrain in range(len(self.train)) :
+                    print(f"Train Index = {indexTrain}")
+                    matrix = self.train[indexTrain] if self.opsional == "user-based" else transpose(self.train[indexTrain])
+                    
+                    result_train = []
+                    for i in range(len(matrix)):
+                        result_inner = [[] for _ in range(len(matrix))]
+                        for j in range(i,len(matrix)):
+                            if i == j:
+                                result_inner[i].append(1)
+                                continue
+                            similarity_result = self.similarity_calculation(i, j, indexTrain)
+                            result_inner[i].append(similarity_result)
+                            result_inner[j].append(similarity_result)
+                        result_train.append(result_inner)
+                    result.append(result_train)
+                return result
+            
+            result = []
+            for indexTrain in range(len(self.train)) :
+                matrix = self.train[indexTrain] if self.opsional == "user-based" else transpose(self.train[indexTrain])
+                
+                result_train = []
+                print(f"Train Index = {indexTrain}")
+                
+                for i in range(len(matrix)):
+                    result_inner = []
+                    for j in range(len(matrix)):
+                        if i == j:
+                            result_inner[i].append(1)
+                            continue
+                        similarity_result = self.similarity_calculation(i, j, indexTrain)
+                        result_inner[i].append(similarity_result)
+                    result_train.append(result_inner)
+                result.append(result_train)
+            return result
         
-        for i in range(len(self.matrix)):
-            for j in range(len(self.matrix)):
-                if i == j:
-                    result[i].append(1)
-                    continue
-                similarity_result = self.similarity_calculation(i, j, self.matrix)
-                result[i].append(similarity_result)
-        return result
-
     def similarity_result(self) -> list[list[float]]:
         return self.result_similarity
 
     @override
-    def show(self) :
-        return pd.DataFrame(self.result_similarity)
+    def show(self,indexTrain : int|None = None) :
+        if self.toyData :
+            return pd.DataFrame(self.result_similarity)
+        
+        if indexTrain is None :
+            return pd.DataFrame(self.result_similarity)
+        return pd.DataFrame(self.result_similarity[indexTrain])

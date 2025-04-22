@@ -80,7 +80,7 @@ return :
 list of list
 """
 def reverseMatrix(data) :
-    return [[float(data[j][i]) for j in range(len(data))]for i in range(len(data[0]))]
+    return list(zip(*data))
 
 """
 Menghapus item pada data

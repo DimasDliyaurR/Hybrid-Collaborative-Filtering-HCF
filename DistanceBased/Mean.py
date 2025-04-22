@@ -1,55 +1,62 @@
 import pandas as pd
 from numpy import transpose
-class Mean :
-    '''
-    Measurement of mean of the user-item matrix rating
-
-    Args:
-    -----
-        data : matrix rating
-        opsional : Determinate based of threating matrix such a , user-based or item-based
-
-    Attributes:
-    -----------
-        matrix : user-item matrix rating
-        result_mean : Result mean of matrix rating
-
-    Methods:
-    --------
-        numerator(self,vector)
-            Sum the vector as a numerator of measurement mean
-
-        denominator(self,vector)
-            Determinate the number of member vector except of zero value
-
-        mean_calculation(self)
-            Measurement mean to user-item matrix rating
-    '''
-    def __init__(self,data, reverseData,*,opsional="user-based"):
-        self.__opsional = opsional
-        self.__data = data if opsional == "user-based" else reverseData
-        self.result_mean = self.mean_calculation()
-        self.result_mean_centered = self.mean_centered_calculation()
-
-    def __numerator(self,vector) -> int:
+from MatrixRating import MatrixRating
+class Mean(MatrixRating) :
+    def __init__(self, data,*,opsional="user-based", toyData : bool = False):
+        super().__init__(data,toyData=toyData)
+        self.opsional = opsional
+        if toyData :
+            self.result_mean = self.__mean_calculation()
+            print(self.result_mean)
+            self.result_mean_centered = self.__mean_centered_calculation()
+        else :
+            self.result_mean_training = self.__mean_calculation()
+            self.result_mean_centered_training = self.__mean_centered_calculation()
+    
+    @staticmethod
+    def __numerator(vector) -> int:
         return sum(vector)
 
-    def __denominator(self,vector) -> int:
+    @staticmethod
+    def __denominator(vector) -> int:
         return len([i for i in vector if i != 0])
 
-    def mean_calculation(self) -> list[float]:
-        return [(self.__numerator(vector)/self.__denominator(vector)) for vector in self.__data]
+    def __mean_calculation(self) -> list[float]:
+        if not self.toyData :
+            return [ [ (self.__numerator(vector)/self.__denominator(vector)) if self.__denominator(vector) != 0 else 0 for vector in (self.train[trainIndex] if self.opsional == "user-based" else transpose(self.train[trainIndex])) ] for trainIndex in range(len(self.train)) ]
+        return [ (self.__numerator(vector)/self.__denominator(vector)) if self.__denominator(vector) != 0 else 0 for vector in (self.matrixRating if self.opsional == "user-based" else self.reverseMatrixRating)]
+    def __mean_centered_calculation(self) -> list[float]:
+        if not self.toyData :
+            
+            result_training = []
+            for trainIndex in range(len(self.train)) :
+                result = []
+                for index,vector in enumerate(self.train[trainIndex] if self.opsional == "user-based" else transpose(self.train[trainIndex])) :
+                    result_inner = []
+                    for item in vector :
+                        result_inner.append((item - self.result_mean_training[trainIndex][index]) if item != 0 else 0)
+                    result.append(result_inner)
+                result_training.append(result if self.opsional == "user-based" else transpose(result))
+            return result_training
 
-    def mean_centered_calculation(self) -> list[float]:
-        return [
-                [
-                    (item - self.result_mean[index]) if item != 0 else 0 for item in vector
-                ] 
-                for index,vector in enumerate(self.__data)
-            ]
+            # return [
+            #         [
+            #             [
+            #                 (item - self.result_mean_training[trainIndex][index]) if item != 0 else 0 for item in vector
+            #             ] 
+            #             for index,vector in enumerate(self.train[trainIndex] if self.opsional == "user-based" else transpose(self.train[trainIndex]))
+            #         ]
+            #             for trainIndex in range(len(self.train))
+            #         ]
+        
+        return [[ ((self.matrixRating[u][i] - self.result_mean[u]) if self.opsional == "user-based" else (self.matrixRating[u][i] - self.result_mean[i])) if self.matrixRating[u][i] != 0 else 0 for i in range(len(self.matrixRating[u]))] for u in range(len(self.matrixRating))]
 
-    def show_mean(self) :
-        return {
-            "mean" : pd.DataFrame(self.result_mean),
-            "mean_centered" : pd.DataFrame(self.result_mean_centered if self.__opsional == "user-based" else transpose(self.result_mean_centered))
-        }
+    def show_mean_centered(self, indexTrain : bool |None = None) :
+        if not self.toyData :
+            return pd.DataFrame(self.result_mean_centered_training[indexTrain])
+        return pd.DataFrame(self.result_mean_centered)
+    
+    def show_mean(self, indexTrain : bool | None = None) :
+        if not self.toyData : 
+            return pd.DataFrame(self.result_mean_training[indexTrain])
+        return pd.DataFrame(self.result_mean)

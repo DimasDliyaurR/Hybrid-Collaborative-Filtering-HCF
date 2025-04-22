@@ -57,10 +57,10 @@ class PearsonSimilarity (SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
                 result[j].append(similarity_result)
         print("Sim : Selesai")
         return result
-    
+
     def similarity_result(self) -> list[list[float]]:
         return self.result_similarity
-        
+
     @override
     def show(self) -> object:
         return pd.DataFrame(self.result_similarity)
