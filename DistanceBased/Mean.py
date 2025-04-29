@@ -57,6 +57,8 @@ class Mean(MatrixRating) :
         return pd.DataFrame(self.result_mean_centered)
     
     def show_mean(self, indexTrain : bool | None = None) :
-        if not self.toyData : 
+        if not self.toyData :
+            if indexTrain is None :
+                return pd.DataFrame(self.result_mean_training)
             return pd.DataFrame(self.result_mean_training[indexTrain])
         return pd.DataFrame(self.result_mean)

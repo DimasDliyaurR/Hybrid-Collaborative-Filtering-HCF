@@ -1,35 +1,82 @@
 import pandas as pd
-import prediction as p
+from prediction import Prediction
+from DistanceBased import Mean, Similarity
+from MatrixRating import MatrixRating
+from operator import itemgetter
 
-class HybridCollaborativeFiltering() :
+class HybridCollaborativeFiltering(Similarity,Prediction) :
 
-    def __init__(self,data : list[list[float]], similarity : "p.prediction",*, gamma : float,k : list, N : int = 2):
-        self.matrix = data
+    def __init__(self, similarity_user_based : Prediction, similarity_item_based : Prediction,*,data : str|None = None, gamma : float, N : int = 2) -> None :
         self.gamma = gamma
         self.N = N
-        self.user_based = similarity(self.matrix,opsional="user-based",k=k[0])
-        self.item_based = similarity(self.matrix,opsional="item-based",k=k[1])
+        self.user_based = similarity_user_based
+        self.item_based = similarity_item_based
+
+        self.__validationObject()
+        self.toyData = similarity_user_based.toyData
+        self.k = similarity_user_based.k
+        MatrixRating.__init__(data,toyData=self.toyData)
+
         self.prediction_user_based = self.user_based.get_prediction_array()
         self.prediction_item_based = self.item_based.get_prediction_array()
+
         self.result_hybrid = self.main_calculation()
         self.topN = self.get_top_n()
 
-    def fusion(self,outer : int,inner : int) -> float:
-        return (self.gamma * self.prediction_user_based[outer][inner] + (1-self.gamma) * self.prediction_item_based[outer][inner])
+    def __validationObject(self) :
+        """ 
+            Rule :
+            ------
+            1. Similaritas harus sama
+            2. Parameter toyData harus sama
+            3. Parameter K harus sama
+            4. Method harus beda (UCF dan ICF)
+
+            Returns :
+            ---------
+            None
+        """
+
+        if self.__checkType() and self.__checkToyData() and self.__checkKParam() and self.__checkOpsionalParam() :
+            return
+
+        if not self.__checkType() :
+            raise ValueError("The Type between object should be same !")
+        elif not self.__checkToyData() :
+            raise ValueError("The toyData parameter between object should be same !")
+        elif not self.__checkKParam() :
+            raise ValueError("The K parameter between object should be same !")
+        elif not self.__checkOpsionalParam() :
+            raise ValueError("The opsional parameter between object should be different !")
     
+    def __checkType(self) :
+        return type(self.user_based) == type(self.user_based)
+
+    def __checkToyData(self) :
+        return self.user_based.toyData == self.item_based.toyData
+
+    def __checkKParam(self) :
+        return self.user_based.k == self.item_based.k
+
+    def __checkOpsionalParam(self) :
+        return self.user_based.opsional != self.item_based.opsional
+
+    def fusion(self,user : int,item : int,*,indexTrain : int|None = None) -> float:
+        if self.toyData :
+            return (self.gamma * self.prediction_user_based[user][item] + (1-self.gamma) * self.prediction_item_based[user][item])
+        return (self.gamma * self.prediction_user_based[indexTrain][user][item] + (1-self.gamma) * self.prediction_item_based[indexTrain][user][item])
+
     def main_calculation(self) -> list[list[float]]:
-         print(self.matrix)
-         print(len(self.matrix))
-         print(len(self.matrix[0]))
-         return [
-            [
-                (self.fusion(outer,inner) if self.matrix[outer][inner] == 0 else self.matrix[outer][inner])
-                for inner in range(len(self.matrix[0]))
-            ]
-            for outer in range(len(self.matrix))
-        ]
-    
-    def get_data_frame(self) -> object :
+        if self.toyData :
+            return [[(self.fusion(user,item)) for item in self.getItem(user)]for user in range(len(self.matrixRating))]
+
+        result = []
+        for indexTrain in range(len(self.train)) :
+            result.append([[(self.fusion(user,item))for item in self.getItem(user,indexTrain=indexTrain,interacted=False)] 
+                            for user in range(len(self.train[indexTrain]))])
+        return result
+
+    def get_data_frame(self) -> pd :
         """
         Mengembalikan hasil prediksi dalam bentuk dataframe
 
@@ -50,12 +97,9 @@ class HybridCollaborativeFiltering() :
             Array yang berisi tentang Top-N
         """
         result = []
-        for i in range(len(self.matrix)) :
-            result.append(
-                sorted([self.result_hybrid[i][inner] for inner in range(len(self.matrix[i])) if self.matrix[i][inner] == 0])[::-1][0:self.N]
-                # Sorting a similarities
-                # list(sim[np.array(sim).argsort()[::-1]][0:self.k])
-                )
+        for i in range(len(self.matrixRating)) :
+            valuePrediction = itemgetter(*self.getItem(i,interacted=False))(self.result_hybrid[i]) if len(self.getItem(i,interacted=False)) > 1 else self.result_hybrid[i][self.getItem(i,interacted=False)[0]]
+            result.append(sorted(len(range(valuePrediction)),key=lambda x : self.result_hybrid[i][x],reverse=True)[:self.k])
         return result
     
     def get_top_n_fusion(self) :

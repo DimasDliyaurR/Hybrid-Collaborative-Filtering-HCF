@@ -16,31 +16,28 @@ class Prediction(Mean):
             if os.path.exists(path_file) :
                 self.prediction = joblib.load(path_file)
             else :
-                self.result_mean_centered_training_prediction = [transpose(self.result_mean_centered_training[i]) for i in range(1,6)] if opsional == "user-based" else self.result_mean_centered_training
+                self.result_mean_centered_training_prediction = [transpose(self.result_mean_centered_training[i]).tolist() for i in range(5)] if opsional == "user-based" else self.result_mean_centered_training
                 self.prediction = self.main_prediction_calculation()
                 print(f"Add Joblib into {path_file}")
                 joblib.dump(self.prediction,path_file)
         else :
             self.similarity = similarity if opsional == "user-based" else transpose(similarity)
             self.result_mean_centered_for_prediction = transpose(self.result_mean_centered).tolist() if opsional == "user-based" else self.result_mean_centered
-            print(len(self.result_mean_centered_for_prediction),len(self.result_mean_centered_for_prediction[0]))
             self.k = k
             self.prediction = self.main_prediction_calculation()
 
         # self.topN = self.get_top_n()
 
-    def __numerator(self,u,i,nearestNeighborhood, indexTrain : int|None = None):
+    def __numerator(self,u,i,nearestNeighborhood, indexTrain : int|None = None) -> float :
         if self.toyData :
-            print("Num Process :")
-            print("Sim",itemgetter(*nearestNeighborhood)(self.similarity[ u  if self.opsional == "user-based" else i ]) if len(nearestNeighborhood) > 1 else self.similarity[ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]])
-            print("MC",itemgetter(*nearestNeighborhood)(self.result_mean_centered_for_prediction[ u  if self.opsional == "item-based" else i ]) if len(nearestNeighborhood) > 1 else self.result_mean_centered_for_prediction[ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]])
-            
-            return sum( list( map(mul,itemgetter(*nearestNeighborhood)(self.similarity[ u  if self.opsional == "user-based" else i ]),
-                                  itemgetter(*nearestNeighborhood)(self.result_mean_centered_for_prediction[ u  if self.opsional == "item-based" else i ])) ) ) if len(nearestNeighborhood) > 1 else (self.similarity[ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]]*self.result_mean_centered_for_prediction[ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]])
+            return sum( list( 
+                map(mul,itemgetter(*nearestNeighborhood)(self.similarity[ u  if self.opsional == "user-based" else i ]),
+                itemgetter(*nearestNeighborhood)(self.result_mean_centered_for_prediction[ u  if self.opsional == "item-based" else i ])) 
+                )) if len(nearestNeighborhood) > 1 else (self.similarity[ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]]*self.result_mean_centered_for_prediction[ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]])
         else :
-            return sum( list( map(mul,itemgetter(*nearestNeighborhood)(self.similarity[indexTrain][ u  if self.opsional == "user-based" else i ]),itemgetter(*nearestNeighborhood)(self.result_mean_centered_training_prediction[indexTrain][ u  if self.opsional == "user-based" else i ])) ) ) if len(nearestNeighborhood) > 1 else (self.similarity[indexTrain][ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]]*self.result_mean_centered_training_prediction[indexTrain][ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]])
+            return sum( list( map(mul,itemgetter(*nearestNeighborhood)(self.similarity[indexTrain][ u  if self.opsional == "user-based" else i ]),itemgetter(*nearestNeighborhood)(self.result_mean_centered_training_prediction[indexTrain][ i  if self.opsional == "user-based" else u ])) ) ) if len(nearestNeighborhood) > 1 else (self.similarity[indexTrain][ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]]*self.result_mean_centered_training_prediction[indexTrain][ i  if self.opsional == "user-based" else u ][nearestNeighborhood[0]])
     
-    def __denominator(self,u,i,nearestNeighborhood, indexTrain : int|None = None):
+    def __denominator(self,u,i,nearestNeighborhood, indexTrain : int|None = None) -> float :
         if self.toyData :
             return sum(list(map(lambda x : abs(x),itemgetter(*nearestNeighborhood)(self.similarity[u if self.opsional == "user-based" else i])))) if len(nearestNeighborhood) > 1 else abs(self.similarity[u if self.opsional == "user-based" else i][nearestNeighborhood[0]])
         else :
@@ -52,7 +49,6 @@ class Prediction(Mean):
             indices = list(set(self.getUser(i))) if self.opsional == "user-based" else list(set(self.getItem(u)))
             similarity_selected = self.similarity[u if self.opsional == "user-based" else i]
         else :
-            print(len(self.similarity),indexTrain)
             similarity_selected = self.similarity[indexTrain][u if self.opsional == "user-based" else i]
             indices = list(set(self.getUser(i, indexTrain)) - set([u])) if self.opsional == "user-based" else list(set(self.getItem(u,indexTrain)) - set([i]))
 
@@ -64,14 +60,14 @@ class Prediction(Mean):
         return indices[:self.k]
         
 
-    def prediction_calculation(self, u, i, indexTrain : int|None = None) -> float:
+    def prediction_calculation(self, u, i, indexTrain : int|None = None) -> float :
         
         if self.toyData :
             nearestNeighborhood = self.selectedNeighborhood(u,i)
             average = self.result_mean[u if self.opsional == "user-based" else i]
         else :
             nearestNeighborhood = self.selectedNeighborhood(u,i, indexTrain)
-            average = self.meanTrain[indexTrain][u if self.opsional == "user-based" else i]
+            average = self.result_mean_training[indexTrain][u if self.opsional == "user-based" else i]
 
         if len(nearestNeighborhood) != 0 :
             numerator = self.__numerator(u,i,nearestNeighborhood,indexTrain)
@@ -96,12 +92,14 @@ class Prediction(Mean):
             result = []
             for indexTrain in range(len(self.train)) :
                 print(f"Prediction Train {indexTrain}")
+                
+                result_train = []
                 for u in range(len(self.train[indexTrain])) :
                     result_inner = []
-                    for i in range(len(self.train[indexTrain][0])) :
-                        value = self.prediction_calculation(u,i,indexTrain) if self.train[indexTrain][u][i] == 0 else  self.train[indexTrain][u][i]
-                        result_inner.append(value)
-                    result.append(value)
+                    for i in range(len(self.train[indexTrain][u])) :
+                        result_inner.append(self.prediction_calculation(u,i,indexTrain) if self.train[indexTrain][u][i] == 0 else  self.train[indexTrain][u][i])
+                    result_train.append(result_inner)
+                result.append(result_train)
             return result
     
     def get_top_n(self) :
@@ -131,17 +129,18 @@ class Prediction(Mean):
                 result.append(result_inner)
             return result
 
-
     def get_top_n_specific_user(self, u, trainIndex : None|int = None) :
         if not self.toyData and trainIndex is None :
-            raise ValueError("Index of train should be passed !")
+            raise ValueError(f"Index of train should be passed ! {self}")
         return self.topN[trainIndex][u] if not self.toyData else self.topN[u]
 
     def get_prediction_array(self):
         return array(self.prediction).tolist()
 
-    def get_prediction_data_frame(self):
-        return pd.DataFrame(self.prediction)
+    def get_prediction_data_frame(self, trainIndex : None|int = None):
+        if trainIndex is None :
+            return pd.DataFrame(self.prediction)
+        return pd.DataFrame(self.prediction[trainIndex])
 
     def get_top_n_array(self) :
         return self.topN
