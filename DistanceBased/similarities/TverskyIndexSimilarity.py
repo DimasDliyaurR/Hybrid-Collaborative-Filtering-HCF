@@ -47,6 +47,9 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
             print("Sim Selesai")
             P.Prediction.__init__(self,data,opsional,self.result_similarity,k=k,toyData=toyData)
 
+    def __checkSymmetric(self) -> bool :
+        return self.alpha_1 == self.alpha_2
+    
     @override
     def numerator(self, A:list, B:list) -> list[float]:
         return len( set(A) & set(B) )
@@ -63,9 +66,6 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
         denom = self.denominator(setA,setB).real
         
         return (self.numerator(setA,setB).real / denom) if denom != 0 else 0
-    
-    def checkSymmetric(self) -> bool :
-        return self.alpha_1 == self.alpha_2
 
     @override
     def main_calculation(self):
@@ -73,7 +73,7 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
             matrix = self.matrixRating if self.opsional == "user-based" else self.reverseMatrixRating
             result = [[] for _ in range(len(matrix))]
             
-            if self.checkSymmetric() :
+            if self.__checkSymmetric() :
                 for i in range(len(matrix)):
                     for j in range(i,len(matrix)):
                         if i == j:
@@ -94,7 +94,7 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
             return result
             
         else :
-            if self.checkIfSymmetric() :
+            if self.__checkSymmetric() :
                 result = []
                 for indexTrain in range(len(self.train)) :
                     print(f"Train Index = {indexTrain}")

@@ -1,3 +1,3 @@
-from .Prediction import Prediction
+from .prediction import Prediction
 
 __all__ = ["Prediction"]

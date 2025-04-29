@@ -26,7 +26,7 @@ class Prediction(Mean):
             self.k = k
             self.prediction = self.main_prediction_calculation()
 
-        # self.topN = self.get_top_n()
+        self.topN = self.get_top_n()
 
     def __numerator(self,u,i,nearestNeighborhood, indexTrain : int|None = None) -> float :
         if self.toyData :
@@ -128,19 +128,21 @@ class Prediction(Mean):
                         result_inner.append(unratedItem)
                 result.append(result_inner)
             return result
+        
+    
 
-    def get_top_n_specific_user(self, u, trainIndex : None|int = None) :
-        if not self.toyData and trainIndex is None :
+    def get_top_n_specific_user(self, u, indexTrain : None|int = None) :
+        if not self.toyData and indexTrain is None :
             raise ValueError(f"Index of train should be passed ! {self}")
-        return self.topN[trainIndex][u] if not self.toyData else self.topN[u]
+        return self.topN[indexTrain][u] if not self.toyData else self.topN[u]
 
     def get_prediction_array(self):
         return array(self.prediction).tolist()
 
-    def get_prediction_data_frame(self, trainIndex : None|int = None):
-        if trainIndex is None :
+    def get_prediction_data_frame(self, indexTrain : None|int = None):
+        if indexTrain is None :
             return pd.DataFrame(self.prediction)
-        return pd.DataFrame(self.prediction[trainIndex])
+        return pd.DataFrame(self.prediction[indexTrain])
 
     def get_top_n_array(self) :
         return self.topN
