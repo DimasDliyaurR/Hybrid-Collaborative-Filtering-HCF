@@ -39,7 +39,7 @@ class Prediction(Mean):
     
     def __denominator(self,u,i,nearestNeighborhood, indexTrain : int|None = None) -> float :
         if self.toyData :
-            return sum(list(map(lambda x : abs(x),itemgetter(*nearestNeighborhood)(self.similarity[u if self.opsional == "user-based" else i])))) if len(nearestNeighborhood) > 1 else abs(self.similarity[u if self.opsional == "user-based" else i][nearestNeighborhood[0]])
+            return sum( list(map(lambda x : abs(x),itemgetter(*nearestNeighborhood)(self.similarity[u if self.opsional == "user-based" else i])))) if len(nearestNeighborhood) > 1 else abs(self.similarity[u if self.opsional == "user-based" else i][nearestNeighborhood[0]])
         else :
             return sum(list(map(lambda x : abs(x),itemgetter(*nearestNeighborhood)(self.similarity[indexTrain][u if self.opsional == "user-based" else i])))) if len(nearestNeighborhood) > 1 else abs(self.similarity[indexTrain][u if self.opsional == "user-based" else i][nearestNeighborhood[0]])
 
@@ -108,9 +108,14 @@ class Prediction(Mean):
             for i in range(len(self.matrixRating)) :
                 print(f"Train index = {indexTrain}")
                 unratedItem = self.getItem(i,interacted=False)
+                
                 if len(unratedItem) > 1 :
-                    valueOfPrediction = itemgetter(*unratedItem)(self.prediction[i])
-                    result.append(sorted(range(len(valueOfPrediction)),key=lambda x: valueOfPrediction[x],reverse=True))
+                    valueOfPrediction = itemgetter(*unratedItem)(self.prediction[i]) if len(unratedItem) > 1 else self.prediction[i][unratedItem[0]]
+
+                    if len(valueOfPrediction) > 1 :
+                        result_inner.append([])
+
+                    result.append(sorted(range(len(valueOfPrediction)),key=lambda x: valueOfPrediction[x],reverse=True) if len(unratedItem) > 1 else valueOfPrediction[0])
                 else :
                     result.append(unratedItem)
             return result
@@ -119,11 +124,20 @@ class Prediction(Mean):
             for indexTrain in range(len(self.train)) :
                 print(f"Train index = {indexTrain}")
                 result_inner = []
-                for i in range(len(self.train[indexTrain])) :
-                    unratedItem = self.getItem(i,indexTrain,interacted=False)
+                for u in range(len(self.train[indexTrain])) :
+                    unratedItem = self.getItem(u,indexTrain,interacted=False)
                     if len(unratedItem) > 1 :
-                        valueOfPrediction = itemgetter(*unratedItem)(self.prediction[i])
-                        result_inner.append(sorted(range(len(valueOfPrediction)),key=lambda x: valueOfPrediction[x],reverse=True))
+                        # Prediction training : 5 x 943 x 1682 
+                        # Prediction training : indexTrain x u x {iteration}
+                        # If number of unrated Item have less then 1 : Acces Prediction training used index
+                        # However, if The number of unrated item have more than 1 , Acces prediction should be with itemgetter function
+                        valueOfPrediction = itemgetter(*unratedItem)(self.prediction[indexTrain][u]) if len(unratedItem) > 1 else self.prediction[indexTrain][u][unratedItem[0]]
+
+                        if len(valueOfPrediction) == 0 :
+                            result_inner.append([])
+                            continue
+
+                        result_inner.append(sorted(range(len(valueOfPrediction)),key=lambda x: valueOfPrediction[x],reverse=True) if len(valueOfPrediction) > 1 else valueOfPrediction[0])
                     else :
                         result_inner.append(unratedItem)
                 result.append(result_inner)

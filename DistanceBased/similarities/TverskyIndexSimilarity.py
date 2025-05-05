@@ -1,51 +1,86 @@
 import DistanceBased as SDB
 import prediction as P
+
 from typing_extensions import override
+
 import pandas as pd
 from numpy import (
     transpose, 
     zeros, 
     array
 )
+
 from MatrixRating import MatrixRating
-from operator import mul,itemgetter
+# from Evaluation import NDCG
 import os
 import joblib
 
 class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
     
-    def __init__(self, data, *, toyData : bool|None = False, opsional="user-based",k=2,alpha_1=0.7,alpha_2=0.2):
-        # SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
+    def __init__(self, data, *,path_evaluation : None|str = None, toyData : bool|None = False, opsional="user-based",k=2,alpha_1=0.7,alpha_2=0.2):
+        SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
         
         self.alpha_1 = alpha_1
         self.alpha_2 = alpha_2
 
         if not toyData :
             
-            # path_file = "cache/tversky_index/" + ("user_based" if self.opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/tversky_index_similarity.joblib"
             path_file = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/tversky_index_similarity.joblib"
-            # path_file_prediction = "cache/tversky_index/" + ("user_based" if self.opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/prediction/{k}/tversky_index_prediction.joblib"
             path_file_prediction = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/prediction/{k}/tversky_index_prediction.joblib"
             print(os.path.exists(path_file))
-            print(path_file)
-            print(os.path.exists(path_file_prediction))
-            print(path_file_prediction)
-            if os.path.exists(path_file) and (not os.path.exists(path_file_prediction)) :
+            if os.path.exists(path_file) : # and (not os.path.exists(path_file_prediction)) :
                 self.result_similarity = joblib.load(path_file)
-            # else :
-            #     print("Sim Selesai")
-            #     self.result_similarity = self.main_calculation()
-            #     print("Sim Mulai")
-            #     joblib.dump(self.result_similarity,path_file)
+            else :
+                print("Sim Selesai")
+                self.result_similarity = self.main_calculation()
+                print("Sim Mulai")
+                joblib.dump(self.result_similarity,path_file)
+                
+            # if not os.path.exists(path_file_prediction) :
+            #     SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
+            P.Prediction.__init__(self,data,opsional,self.result_similarity, path_file=path_file_prediction,k=k,toyData=toyData)
             
-            if not os.path.exists(path_file_prediction) :
-                SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
-                P.Prediction.__init__(self,data,opsional,self.result_similarity, path_file=path_file_prediction,k=k,toyData=toyData)
+            # if not toyData and path_evaluation is None :
+            #     self.evaluation = NDCG(self.prediction,path_evaluation=path_evaluation)
         else :
             print("Sim Mulai")
             self.result_similarity = self.main_calculation()
             print("Sim Selesai")
             P.Prediction.__init__(self,data,opsional,self.result_similarity,k=k,toyData=toyData)
+    
+    # def __metaData(self) :
+
+    #     metadata = {
+    #         "alpa_1": [],
+    #         "alpa_2": [],
+    #         "k": [],
+    #     }
+
+    #     alpha_1 = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+    #     alpha_2 = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+
+    #     k = [5,10,15,18,20,25,30,40,50,100,200]
+
+    #     for a in alpha_1 :
+    #         for b in alpha_2 :
+    #             for c in k :
+    #                 metadata["alpa_1"] += [a]
+    #                 metadata["alpa_2"] += [b]
+    #                 metadata["k"] += [c]
+
+    #     metadata["evaluation"] = [0 for _ in range(len(metadata['k']))]
+
+    #     current_index_position = 0
+
+    #     while len(metadata["alpa_1"]) > current_index_position and not self.__checkCurrentIndex(metadata["alpa_1"][current_index_position],metadata["alpa_2"][current_index_position],metadata["k"][current_index_position]) :
+    #         current_index_position += 1
+
+    #     metadata["evaluation"][current_index_position] = self.evaluation.result_evaluation
+
+    #     return metadata
+    
+    # def __checkCurrentIndex(self, alpha_1 : int, alpha_2 : int, k : int) -> bool :
+    #     return alpha_1 == self.alpha_1 and alpha_2 == self.alpha_2 and k == self.k
 
     def __checkSymmetric(self) -> bool :
         return self.alpha_1 == self.alpha_2
@@ -57,7 +92,7 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
     @override
     def denominator(self, A:list, B:list) -> list[float]:
         return len( set(A) & set(B) ) + (self.alpha_1 * len( set(A) - set(B) )) + self.alpha_2 * len( set(B) - set(A) )
-        
+    
     @override
     def similarity_calculation(self,A, B, indexTrain : int|None = None) -> float :
         setA = set(self.getItem(A,indexTrain) if self.opsional == "user-based" else self.getUser(A,indexTrain))

@@ -32,22 +32,28 @@ class MatrixRating():
             if type(data) is list :
                 raise ValueError(f"{self} data should be type str")
             
+            # Keseuluruhan Dataset
             self.dataset = pd.read_csv(f"{self.data}/u.data",sep="\t", names=["user_id","item_id","rating","timestamp"])
-            self.numberOfUserAndItem = self.__getNumberOfUserAndItemData()            
-            self.numberOfUser = self.numberOfUserAndItem["users"]
-            self.numberOfItem = self.numberOfUserAndItem["items"]
             
-            self.maxIdOfUserAndItem = self._getMaxOfIdUserAndItemData()            
-            self.maxIdOfUser = self.numberOfUserAndItem["users"]
-            self.maxIdOfItem = self.numberOfUserAndItem["items"]
+            numberOfUserAndItem = self.__getNumberOfUserAndItemData()            
+            self.numberOfUser = numberOfUserAndItem["users"]
+            self.numberOfItem = numberOfUserAndItem["items"]
+            
+            self.maxIdOfUserAndItem = self.__getMaxOfIdUserAndItemData()            
+            self.maxIdOfUser = numberOfUserAndItem["users"]
+            self.maxIdOfItem = numberOfUserAndItem["items"]
 
             self.train = [self.__processDataTrain(i) for i in range(1,6)]
             self.test = [self.__processDataTest(i) for i in range(1,6)]
+
             self.train_transpose = [np.transpose(matrix) for matrix in self.train]
+            self.test_transpose = [np.transpose(matrix) for matrix in self.test]
 
         
         self.__matrix_component_of_item = self.__dozenOfItem()
         self.__matrix_component_of_user = self.__dozenOfUser()
+        self.__matrix_component_of_item_test = self.__dozenOfItemTest()
+        self.__matrix_component_of_user_test = self.__dozenOfUserTest()
 
     def __dozenOfItem(self) -> dict :
         if self.toyData :
@@ -72,14 +78,33 @@ class MatrixRating():
             "unrated" : [[[ j for j in range(len(self.train_transpose[indexTrain][i])) if self.train_transpose[indexTrain][i][j] == 0] for i in range(len(self.train_transpose[indexTrain]))] for indexTrain in range(len(self.train))],
             "rated" : [[[ j for j in range(len(self.train_transpose[indexTrain][i])) if self.train_transpose[indexTrain][i][j] != 0] for i in range(len(self.train_transpose[indexTrain]))] for indexTrain in range(len(self.train))],
         }
+    
+    def __dozenOfItemTest(self) -> dict :
+
+        return {
+            "unrated" : [[[ j for j in range(len(self.test[indexTrain][i])) if self.test[indexTrain][i][j] == 0] for i in range(len(self.test[indexTrain]))] for indexTrain in range(len(self.test))],
+            "rated" : [[[ j for j in range(len(self.test[indexTrain][i])) if self.test[indexTrain][i][j] != 0] for i in range(len(self.test[indexTrain]))] for indexTrain in range(len(self.test))],
+        }
+
+    def __dozenOfUserTest(self) -> dict[str : Matrix ] :
+        if self.toyData :
+            return {
+                "unrated" : [[j for j in range(len(self.reverseMatrixRating[0])) if self.reverseMatrixRating[i][j] == 0 ] for i in range(len(self.reverseMatrixRating))],
+                "rated" : [[j for j in range(len(self.reverseMatrixRating[0])) if self.reverseMatrixRating[i][j] != 0 ] for i in range(len(self.reverseMatrixRating))]
+            }
+        
+        return {
+            "unrated" : [[[ j for j in range(len(self.test_transpose[indexTrain][i])) if self.test_transpose[indexTrain][i][j] == 0] for i in range(len(self.test_transpose[indexTrain]))] for indexTrain in range(len(self.test))],
+            "rated" : [[[ j for j in range(len(self.test_transpose[indexTrain][i])) if self.test_transpose[indexTrain][i][j] != 0] for i in range(len(self.test_transpose[indexTrain]))] for indexTrain in range(len(self.test))],
+        }
 
     def __getNumberOfUserAndItemData(self) -> dict[int] :        
         return {
             "users" : len(pd.unique(self.dataset["user_id"])),
             "items" : len(pd.unique(self.dataset["item_id"]))
             }
-    
-    def _getMaxOfIdUserAndItemData(self) -> dict[int] :        
+
+    def __getMaxOfIdUserAndItemData(self) -> dict[int] :  
         return {
             "users" : max(pd.unique(self.dataset["user_id"])),
             "items" : max(pd.unique(self.dataset["item_id"]))
@@ -135,6 +160,56 @@ class MatrixRating():
             if indexTrain is None :
                 raise ValueError(f"Index of train is missing {self}")
             return self.__matrix_component_of_user[label][indexTrain][item]
+    
+    def getItemTest(self, user : int, indexTrain : int|None = None,*, interacted : bool = True) -> Vector :
+        """
+        Get set of item have rated by specific user
+            Representation of I_u or \widehat{I}_u (depend on parameter interacted) Notation
+        ------------------------------------------------------------------------------------
+        Parameters :
+            user : int 
+                specific user 
+
+            interacted : bool 
+                The item have rated or not the item
+
+        Returns :
+            list[float] : Set of item
+        """
+
+        label = "rated" if interacted else "unrated"
+
+        if self.toyData :
+            return self.__matrix_component_of_item_test[label][user]
+        else :
+            if indexTrain is None :
+                raise ValueError(f"Index of train is missing {self}")
+            return self.__matrix_component_of_item_test[label][indexTrain][user]
+
+    def getUserTest(self ,item : int,indexTrain : int|None = None,*,interacted: bool=True) -> Vector :
+        """
+        Get set of user have rated by specific item
+            Representation of U_i or \widehat{U}_i (depend on parameter interacted) Notation
+        ------------------------------------------------------------------------------------
+        Parameters
+        ----------
+            item : int
+                specific item
+            interacted : bool
+                The item already rated or not by user
+
+        Returns
+        -------
+            list[float] : Set of item
+        """
+        label = "rated" if interacted else "unrated"
+        
+        if self.toyData :
+            return self.__matrix_component_of_user_test[label][item]
+        else :
+            if indexTrain is None :
+                raise ValueError(f"Index of train is missing {self}")
+            return self.__matrix_component_of_user_test[label][indexTrain][item]
 
     def getItemWithValue(self,user : int, *,indexTrain : int|None = None, interacted : bool = True) -> Vector :
         if self.toyData :
@@ -203,3 +278,6 @@ class MatrixRating():
             Pandas
         """
         return pd.DataFrame(self.train[u])
+    
+    def show_dataset(self):
+        return self.transformationData(self.dataset)
