@@ -110,12 +110,12 @@ class Prediction(Mean):
                 unratedItem = self.getItem(i,interacted=False)
                 
                 if len(unratedItem) > 1 :
-                    valueOfPrediction = itemgetter(*unratedItem)(self.prediction[i]) if len(unratedItem) > 1 else self.prediction[i][unratedItem[0]]
+                    # valueOfPrediction = itemgetter(*unratedItem)(self.prediction[i]) if len(unratedItem) > 1 else self.prediction[i][unratedItem[0]]
 
                     if len(valueOfPrediction) > 1 :
                         result_inner.append([])
 
-                    result.append(sorted(range(len(valueOfPrediction)),key=lambda x: valueOfPrediction[x],reverse=True) if len(unratedItem) > 1 else valueOfPrediction[0])
+                    result.append(unratedItem,key=lambda x: self.prediction[i][x],reverse=True) if len(unratedItem) > 1 else self.prediction[i][unratedItem[0]]
                 else :
                     result.append(unratedItem)
             return result
@@ -125,25 +125,26 @@ class Prediction(Mean):
                 print(f"Train index = {indexTrain}")
                 result_inner = []
                 for u in range(len(self.train[indexTrain])) :
-                    unratedItem = self.getItem(u,indexTrain,interacted=False)
+                    unratedItem = self.getItem(u,indexTrain=indexTrain,interacted=False)
                     if len(unratedItem) > 1 :
                         # Prediction training : 5 x 943 x 1682 
                         # Prediction training : indexTrain x u x {iteration}
                         # If number of unrated Item have less then 1 : Acces Prediction training used index
                         # However, if The number of unrated item have more than 1 , Acces prediction should be with itemgetter function
-                        valueOfPrediction = itemgetter(*unratedItem)(self.prediction[indexTrain][u]) if len(unratedItem) > 1 else self.prediction[indexTrain][u][unratedItem[0]]
+                        # valueOfPrediction = itemgetter(*unratedItem)(self.prediction[indexTrain][u]) if len(unratedItem) > 1 else self.prediction[indexTrain][u][unratedItem[0]]
 
-                        if len(valueOfPrediction) == 0 :
+                        if len(unratedItem) == 0 :
                             result_inner.append([])
                             continue
+                        
+                        # Algoritma Seharusnya disamakan dengan sebelumnya (Skripsi Tahun Kemarin)
+                        sorted_array = sorted(unratedItem,key=lambda x: self.prediction[indexTrain][u][x],reverse=True) if len(unratedItem) > 1 else self.prediction[indexTrain][u][unratedItem[0]]
 
-                        result_inner.append(sorted(range(len(valueOfPrediction)),key=lambda x: valueOfPrediction[x],reverse=True) if len(valueOfPrediction) > 1 else valueOfPrediction[0])
+                        result_inner.append(sorted_array)
                     else :
                         result_inner.append(unratedItem)
                 result.append(result_inner)
             return result
-        
-    
 
     def get_top_n_specific_user(self, u, indexTrain : None|int = None) :
         if not self.toyData and indexTrain is None :
