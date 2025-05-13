@@ -112,7 +112,7 @@ class Prediction(Mean):
                 if len(unratedItem) > 1 :
                     # valueOfPrediction = itemgetter(*unratedItem)(self.prediction[i]) if len(unratedItem) > 1 else self.prediction[i][unratedItem[0]]
 
-                    if len(valueOfPrediction) > 1 :
+                    if len(unratedItem) < 1 :
                         result_inner.append([])
 
                     result.append(unratedItem,key=lambda x: self.prediction[i][x],reverse=True) if len(unratedItem) > 1 else self.prediction[i][unratedItem[0]]

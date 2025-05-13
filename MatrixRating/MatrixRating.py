@@ -48,7 +48,6 @@ class MatrixRating():
 
             self.train_transpose = [np.transpose(matrix) for matrix in self.train]
             self.test_transpose = [np.transpose(matrix) for matrix in self.test]
-
         
         self.__matrix_component_of_item = self.__dozenOfItem()
         self.__matrix_component_of_user = self.__dozenOfUser()
