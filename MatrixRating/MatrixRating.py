@@ -42,6 +42,10 @@ class MatrixRating():
             self.maxIdOfUserAndItem = self.__getMaxOfIdUserAndItemData()            
             self.maxIdOfUser = numberOfUserAndItem["users"]
             self.maxIdOfItem = numberOfUserAndItem["items"]
+            
+            self.uniqueIdOfUserAndItemTrain = self.__getUniqueOfUserAndItemDataTrain()
+
+            self.uniqueIdOfUserAndItemTest = self.__getUniqueOfUserAndItemDataTest() 
 
             self.train = [self.__processDataTrain(i) for i in range(1,6)]
             self.test = [self.__processDataTest(i) for i in range(1,6)]
@@ -97,6 +101,32 @@ class MatrixRating():
             "rated" : [[[ j for j in range(len(self.test_transpose[indexTrain][i])) if self.test_transpose[indexTrain][i][j] != 0] for i in range(len(self.test_transpose[indexTrain]))] for indexTrain in range(len(self.test))],
         }
 
+    def __getUniqueOfUserAndItemDataTrain(self) -> dict[int] :
+        train_per_train_user = []
+        train_per_train_item = []
+        for index in range(1,6) :
+            df = pd.read_csv(f"data/ml-100k/u{index}.base",sep="\t", names=["user_id","item_id","rating","timestamp"])
+            train_per_train_user.append(pd.unique(df["user_id"]))
+            train_per_train_item.append(pd.unique(df["item_id"]))
+        
+        return {
+                "users" : train_per_train_user,
+                "items" : train_per_train_item
+            }
+    
+    def __getUniqueOfUserAndItemDataTest(self) -> dict[int] :
+        train_per_test_user = []
+        train_per_test_item = []
+        for index in range(1,6) :
+            df = pd.read_csv(f"data/ml-100k/u{index}.test",sep="\t", names=["user_id","item_id","rating","timestamp"])
+            train_per_test_user.append(pd.unique(df["user_id"]))
+            train_per_test_item.append(pd.unique(df["item_id"]))
+        
+        return {
+                "users" : train_per_test_user,
+                "items" : train_per_test_item
+            }
+    
     def __getNumberOfUserAndItemData(self) -> dict[int] :        
         return {
             "users" : len(pd.unique(self.dataset["user_id"])),
@@ -108,6 +138,19 @@ class MatrixRating():
             "users" : max(pd.unique(self.dataset["user_id"])),
             "items" : max(pd.unique(self.dataset["item_id"]))
             }
+    
+    def getUniqueIdOfUserTrain(self,indexTrain : None|int = None) :
+        return self.uniqueIdOfUserAndItemTrain["users"][indexTrain]
+    
+    def getUniqueIdOfItemTrain(self,indexTrain : None|int = None) :
+        return self.uniqueIdOfUserAndItemTrain["items"][indexTrain]
+    
+    def getUniqueIdOfUserTest(self,indexTrain : None|int = None) :
+        return self.uniqueIdOfUserAndItemTest["users"][indexTrain]
+    
+    def getUniqueIdOfItemTest(self,indexTrain : None|int = None) :
+        return self.uniqueIdOfUserAndItemTest["items"][indexTrain]
+        
 
 
     def getItem(self, user : int, indexTrain : int|None = None,*, interacted : bool = True) -> Vector :
