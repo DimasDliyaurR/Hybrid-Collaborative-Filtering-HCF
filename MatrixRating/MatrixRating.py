@@ -106,8 +106,8 @@ class MatrixRating():
         train_per_train_item = []
         for index in range(1,6) :
             df = pd.read_csv(f"data/ml-100k/u{index}.base",sep="\t", names=["user_id","item_id","rating","timestamp"])
-            train_per_train_user.append(pd.unique(df["user_id"]))
-            train_per_train_item.append(pd.unique(df["item_id"]))
+            train_per_train_user.append(pd.unique(df["user_id"])-1)
+            train_per_train_item.append(pd.unique(df["item_id"])-1)
         
         return {
                 "users" : train_per_train_user,
@@ -119,8 +119,9 @@ class MatrixRating():
         train_per_test_item = []
         for index in range(1,6) :
             df = pd.read_csv(f"data/ml-100k/u{index}.test",sep="\t", names=["user_id","item_id","rating","timestamp"])
-            train_per_test_user.append(pd.unique(df["user_id"]))
-            train_per_test_item.append(pd.unique(df["item_id"]))
+            # df = self.transformationData(df)
+            train_per_test_user.append(pd.unique(df["user_id"])-1)
+            train_per_test_item.append(pd.unique(df["item_id"])-1)
         
         return {
                 "users" : train_per_test_user,
@@ -139,16 +140,16 @@ class MatrixRating():
             "items" : max(pd.unique(self.dataset["item_id"]))
             }
     
-    def getUniqueIdOfUserTrain(self,indexTrain : None|int = None) :
+    def getUniqueIdOfUserTrain(self,*,indexTrain : None|int = None) :
         return self.uniqueIdOfUserAndItemTrain["users"][indexTrain]
     
-    def getUniqueIdOfItemTrain(self,indexTrain : None|int = None) :
+    def getUniqueIdOfItemTrain(self,*,indexTrain : None|int = None) :
         return self.uniqueIdOfUserAndItemTrain["items"][indexTrain]
     
-    def getUniqueIdOfUserTest(self,indexTrain : None|int = None) :
+    def getUniqueIdOfUserTest(self,*,indexTrain : None|int = None) :
         return self.uniqueIdOfUserAndItemTest["users"][indexTrain]
     
-    def getUniqueIdOfItemTest(self,indexTrain : None|int = None) :
+    def getUniqueIdOfItemTest(self,*,indexTrain : None|int = None) :
         return self.uniqueIdOfUserAndItemTest["items"][indexTrain]
         
 

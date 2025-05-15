@@ -8,7 +8,8 @@ class NDCG(MatrixRating) :
         self.N = N
         self.top_n = top_n
 
-        if self.toyData :
+        if toyData :
+            self.toyData = toyData
             self.data_test = data
         else :
             MatrixRating.__init__(self,data,toyData=toyData)
@@ -16,22 +17,23 @@ class NDCG(MatrixRating) :
         self.result_evaluation = self.main_calculation()
 
     def get_top_n_specific_user(self,u,*,indexTrain : int|None = None) -> list[float] :
-        return self.top_n[indexTrain][u] if not self.toyData else self.top_n[u]
+        return self.top_n[indexTrain][u] if not self.toyData else self.top_n
 
-    def groundTruth(self, u, indexTrain : int|None = None) -> np.array :
+    def groundTruth(self, u : None | int = None, indexTrain : int|None = None) -> np.array :
         if not self.toyData :
             data_test = self.getItemTest(u,indexTrain=indexTrain)
             return np.array([1 if (self.get_top_n_specific_user(u,indexTrain=indexTrain)[:i+1][-1] in data_test) and len(data_test) > i else 0 for i in range(self.N)])
          
-        return np.array([1 if (self.get_top_n_specific_user(u)[:i+1][-1] in self.data_test) and len(self.data_test) > i else 0 for i in range(self.N)])
+        return np.array([1 if (self.top_n[:i+1][-1] in self.data_test) and len(self.top_n) > i else 0 for i in range(self.N)])
 
     def IDCG(self) -> float :
-        return sum(1/np.log2(np.arange(2,self.N+2))).real
+        return sum([sum([sum(1/np.log2(np.arange(2,n+2))) for n in range(i)]) for i in range(1,self.N+2)])
 
-    def DCG(self, u, indexTrain : int|None = None) -> float :
-        return sum(self.groundTruth(u,indexTrain=indexTrain)/np.log2(np.arange(2,self.N+2))).real
+    def DCG(self, u: None | int = None, indexTrain : int|None = None) -> float :
+        print([sum([(self.groundTruth(u,indexTrain=indexTrain)[:n]/np.log2(np.arange(2,n+3))) for n in range(i)]) for i in range(1,self.N+3)])
+        return sum([sum([sum(self.groundTruth(u,indexTrain=indexTrain)[:n]/np.log2(np.arange(2,n+3))) for n in range(i)]) for i in range(1,self.N+3)])
 
-    def NDCG(self,u,indexTrain : None | int = None) -> float :
+    def NDCG(self,u: None | int = None,indexTrain : None | int = None) -> float :
         return self.DCG(u,indexTrain=indexTrain) / self.IDCG()
     
     def main_calculation(self) -> float :
@@ -54,7 +56,7 @@ class NDCG(MatrixRating) :
             for indexTrain in range(len(self.train)) :
                 
                 number_of_evaluation_per_fold = 0
-                for u in range(len(self.train[indexTrain])) :
+                for u in self.getUniqueIdOfUserTest(indexTrain=indexTrain) :
                     # Proses Tahap 1
                     number_of_evaluation_per_fold += self.NDCG(u,indexTrain)
                 
