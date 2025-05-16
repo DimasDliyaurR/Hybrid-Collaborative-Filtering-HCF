@@ -1,10 +1,8 @@
 import pandas as pd
 from prediction import Prediction
-from DistanceBased import Mean, Similarity
 from MatrixRating import MatrixRating
-from operator import itemgetter
 
-class HybridCollaborativeFiltering(MatrixRating) :
+class HybridCollaborativeFiltering(Prediction) :
 
     def __init__(self, similarity_user_based : Prediction, similarity_item_based : Prediction,*,data : str|None = None, gamma : float, N : int = 2) -> None :
         self.gamma = gamma
@@ -13,28 +11,29 @@ class HybridCollaborativeFiltering(MatrixRating) :
         self.item_based = similarity_item_based
 
         self.__validationObject()
+        self.__opsional = similarity_user_based.opsional
         self.toyData = similarity_user_based.toyData
         self.k = similarity_user_based.k
-        MatrixRating.__init__(self,data,toyData=self.user_based.toyData)
-
+        MatrixRating.__init__(self,data,toyData=self.toyData)
         self.prediction_user_based = self.user_based.get_prediction_array()
         self.prediction_item_based = self.item_based.get_prediction_array()
 
         self.result_hybrid = self.main_calculation()
-        self.topN = self.get_top_n()
+        Prediction.__init__(self,data,self.__opsional,k=self.k,prediction=self.result_hybrid,hybrid=True)
+        # self.topN = self.get_top_n()
 
     def __validationObject(self) :
         """ 
-            Rule :
-            ------
-            1. Similaritas harus sama
-            2. Parameter toyData harus sama
-            3. Parameter K harus sama
-            4. Method harus beda (UCF dan ICF)
+        Rule :
+        ------
+        1. Similarity must be same
+        2. Parameter toyData must be same
+        3. Parameter K must be same
+        4. Method must be same (UCF dan ICF)
 
-            Returns :
-            ---------
-            None
+        Returns :
+        ---------
+        None
         """
 
         if self.__checkType() and self.__checkToyData() and self.__checkKParam() and self.__checkOpsionalParam() :
@@ -97,50 +96,6 @@ class HybridCollaborativeFiltering(MatrixRating) :
         if indexTrain is None :
             return pd.DataFrame(self.result_hybrid)
         return pd.DataFrame(self.result_hybrid[indexTrain])
-    
-    def get_top_n(self) :
-        if self.toyData :
-            result = []
-            for i in range(len(self.matrixRating)) :
-                print(f"Train index = {indexTrain}")
-                unratedItem = self.getItem(i,interacted=False)
-                
-                if len(unratedItem) > 1 :
-                    # valueOfPrediction = itemgetter(*unratedItem)(self.prediction[i]) if len(unratedItem) > 1 else self.prediction[i][unratedItem[0]]
-
-                    if len(unratedItem) < 1 :
-                        result_inner.append([])
-
-                    result.append(unratedItem,key=lambda x: self.result_hybrid[i][x],reverse=True) if len(unratedItem) > 1 else self.result_hybrid[i][unratedItem[0]]
-                else :
-                    result.append(unratedItem)
-            return result
-        else :
-            result = []
-            for indexTrain in range(len(self.train)) :
-                print(f"Train index = {indexTrain}")
-                result_inner = []
-                for u in range(len(self.train[indexTrain])) :
-                    unratedItem = self.getItem(u,indexTrain=indexTrain,interacted=False)
-                    if len(unratedItem) > 1 :
-                        # Prediction training : 5 x 943 x 1682 
-                        # Prediction training : indexTrain x u x {iteration}
-                        # If number of unrated Item have less then 1 : Acces Prediction training used index
-                        # However, if The number of unrated item have more than 1 , Acces prediction should be with itemgetter function
-                        # valueOfPrediction = itemgetter(*unratedItem)(self.prediction[indexTrain][u]) if len(unratedItem) > 1 else self.prediction[indexTrain][u][unratedItem[0]]
-
-                        if len(unratedItem) == 0 :
-                            result_inner.append([])
-                            continue
-                        
-                        # Algoritma Seharusnya disamakan dengan sebelumnya (Skripsi Tahun Kemarin)
-                        sorted_array = sorted(unratedItem,key=lambda x: self.result_hybrid[indexTrain][u][x],reverse=True) if len(unratedItem) > 1 else self.result_hybrid[indexTrain][u][unratedItem[0]]
-
-                        result_inner.append(sorted_array)
-                    else :
-                        result_inner.append(unratedItem)
-                result.append(result_inner)
-            return result
     
     def get_top_n_fusion(self) :
         """

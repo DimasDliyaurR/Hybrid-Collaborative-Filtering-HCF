@@ -7,19 +7,23 @@ import joblib
 
 class Prediction(Mean):
     
-    def __init__(self,data, opsional, similarity,*, k : int, path_file : str|None = None, toyData : bool = False):
+    def __init__(self,data, opsional, similarity : None| list[list[float]] = None,*, prediction : None| list[list[float]] = None, hybrid : None|bool = False, k : int, path_file : str|None = None, toyData : bool = False):
         super().__init__(data,opsional=opsional,toyData=toyData)
         if not self.toyData :
             self.k = k
-            self.similarity = similarity
             
-            if os.path.exists(path_file) :
-                self.prediction = joblib.load(path_file)
+            if not hybrid :
+                self.similarity = similarity
+            
+                if os.path.exists(path_file) :
+                    self.prediction = joblib.load(path_file)
+                else :
+                    self.result_mean_centered_training_prediction = [transpose(self.result_mean_centered_training[i]).tolist() for i in range(5)] if opsional == "user-based" else self.result_mean_centered_training
+                    self.prediction = self.main_prediction_calculation()
+                    print(f"Add Joblib into {path_file}")
+                    joblib.dump(self.prediction,path_file)
             else :
-                self.result_mean_centered_training_prediction = [transpose(self.result_mean_centered_training[i]).tolist() for i in range(5)] if opsional == "user-based" else self.result_mean_centered_training
-                self.prediction = self.main_prediction_calculation()
-                print(f"Add Joblib into {path_file}")
-                joblib.dump(self.prediction,path_file)
+                self.prediction = prediction
         else :
             self.similarity = similarity if opsional == "user-based" else transpose(similarity)
             self.result_mean_centered_for_prediction = transpose(self.result_mean_centered).tolist() if opsional == "user-based" else self.result_mean_centered
