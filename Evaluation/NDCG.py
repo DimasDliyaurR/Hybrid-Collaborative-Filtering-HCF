@@ -26,12 +26,32 @@ class NDCG(MatrixRating) :
          
         return np.array([1 if (self.top_n[:i+1][-1] in self.data_test) and len(self.top_n) > i else 0 for i in range(self.N)])
 
+    def ideal_iteration(self,n) -> np.array :
+        return np.array([sum([sum(1/np.log2(np.arange(2,n+3))) for n in range(i)]) for i in range(1,n+1)])
+
+    def ideal(self,n) :
+        return np.array([sum(1/np.log2(np.arange(2,n+2)))  for n in range(1,n+1)])
+
     def IDCG(self) -> float :
-        return sum([sum([sum(1/np.log2(np.arange(2,n+2))) for n in range(i)]) for i in range(1,self.N+2)])
+        return sum(self.ideal_iteration(self.N))
 
     def DCG(self, u: None | int = None, indexTrain : int|None = None) -> float :
-        print([sum([(self.groundTruth(u,indexTrain=indexTrain)[:n]/np.log2(np.arange(2,n+3))) for n in range(i)]) for i in range(1,self.N+3)])
-        return sum([sum([sum(self.groundTruth(u,indexTrain=indexTrain)[:n]/np.log2(np.arange(2,n+3))) for n in range(i)]) for i in range(1,self.N+3)])
+        gt = self.groundTruth(u,indexTrain=indexTrain)
+        ideal_dcg = [i*j for i,j in zip(self.ideal(self.N),gt)]
+        # print(ideal_dcg)
+
+        result = []
+        for i in range(1,self.N) :
+            result_inner = []
+            for n in range(1,i+2) :
+                calculation = ideal_dcg[:n]
+                result_inner.append(float(sum(calculation).real))
+            # print(result_inner)
+            result.append((result_inner))
+        print(len(result[-1]))
+        print(result[-1])
+        return sum(result[-1])
+
 
     def NDCG(self,u: None | int = None,indexTrain : None | int = None) -> float :
         return self.DCG(u,indexTrain=indexTrain) / self.IDCG()

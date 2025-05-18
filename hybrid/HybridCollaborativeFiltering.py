@@ -49,7 +49,7 @@ class HybridCollaborativeFiltering(Prediction) :
             raise ValueError("The opsional parameter between object should be different !")
     
     def __checkType(self) :
-        return type(self.user_based) == type(self.user_based)
+        return type(self.user_based) == type(self.item_based)
 
     def __checkToyData(self) :
         return self.user_based.toyData == self.item_based.toyData
