@@ -1,61 +1,42 @@
+from Evaluation import Evaluation
 import numpy as np
-from MatrixRating import MatrixRating
+from typing_extensions import override, overload
 
-class NDCG(MatrixRating) :
+class NDCG(Evaluation) :
 
-    def __init__(self,data, top_n : list[list[list[int]]],*, path_evaluation : str = None,toyData : bool, N : int = 30) -> None:
-
-        self.N = N
-        self.top_n = top_n
-
-        if toyData :
-            self.toyData = toyData
-            self.data_test = data
-        else :
-            MatrixRating.__init__(self,data,toyData=toyData)
-
-        self.result_evaluation = self.main_calculation()
-
-    def get_top_n_specific_user(self,u,*,indexTrain : int|None = None) -> list[float] :
-        return self.top_n[indexTrain][u] if not self.toyData else self.top_n
+    def __init__(self,data, top_n : list[list[list[int]]],*, path_evaluation : str = None,toyData : bool, N : int = 30):
+        super().__init__(data, top_n, path_evaluation=path_evaluation,toyData = toyData, N=N)
 
     def groundTruth(self, u : None | int = None, indexTrain : int|None = None) -> np.array :
         if not self.toyData :
             data_test = self.getItemTest(u,indexTrain=indexTrain)
             return np.array([1 if (self.get_top_n_specific_user(u,indexTrain=indexTrain)[:i+1][-1] in data_test) and len(data_test) > i else 0 for i in range(self.N)])
-         
+
         return np.array([1 if (self.top_n[:i+1][-1] in self.data_test) and len(self.top_n) > i else 0 for i in range(self.N)])
 
-    def ideal_iteration(self,n) -> np.array :
-        return np.array([sum([sum(1/np.log2(np.arange(2,n+3))) for n in range(i)]) for i in range(1,n+1)])
-
     def ideal(self,n) :
-        return np.array([sum(1/np.log2(np.arange(2,n+2)))  for n in range(1,n+1)])
+        return np.array([sum(1/np.log2(np.arange(2,n+2))) for n in range(1,n+1)])
+
+    def ideal_iteration(self,n) -> np.array :
+        return np.array([sum(self.ideal(i)) for i in range(1,n+1)])
 
     def IDCG(self) -> float :
         return sum(self.ideal_iteration(self.N))
 
     def DCG(self, u: None | int = None, indexTrain : int|None = None) -> float :
-        gt = self.groundTruth(u,indexTrain=indexTrain)
-        ideal_dcg = [i*j for i,j in zip(self.ideal(self.N),gt)]
-        # print(ideal_dcg)
+        ground_truth = self.groundTruth(u,indexTrain=indexTrain)
+        dcg_iteration = [ideal_iteration*ground_truth_index for ideal_iteration,ground_truth_index in zip(self.ideal(self.N),ground_truth)]
 
-        result = []
-        for i in range(1,self.N) :
-            result_inner = []
-            for n in range(1,i+2) :
-                calculation = ideal_dcg[:n]
-                result_inner.append(float(sum(calculation).real))
-            # print(result_inner)
-            result.append((result_inner))
-        print(len(result[-1]))
-        print(result[-1])
+        result = [[sum(dcg_iteration[:n]) for n in range(1,i+2)] for i in range(self.N)]
+
         return sum(result[-1])
 
-
-    def NDCG(self,u: None | int = None,indexTrain : None | int = None) -> float :
-        return self.DCG(u,indexTrain=indexTrain) / self.IDCG()
+    def NDCG(self,dcg : list[float]|None = None ,idcg : list[float] | None = None) -> np.array :
+        if not self.toyData :
+            return dcg/idcg
+        return self.DCG()/self.IDCG()
     
+    @override
     def main_calculation(self) -> float :
         """
         The main calculation of evaluation 
@@ -72,26 +53,29 @@ class NDCG(MatrixRating) :
         
         """
         if not self.toyData :
+            # list[5]
             result_per_fold = []
             for indexTrain in range(len(self.train)) :
-                
-                number_of_evaluation_per_fold = 0
+
+                number_dcg_of_evaluation_per_fold = []
+                number_idcg_of_evaluation_per_fold = []
+
                 for u in self.getUniqueIdOfUserTest(indexTrain=indexTrain) :
-                    # Proses Tahap 1
-                    number_of_evaluation_per_fold += self.NDCG(u,indexTrain)
-                
-                # Proses Tahap 2
-                print("Tahap 1 =", number_of_evaluation_per_fold)
-                mean_evaluation_per_fold = number_of_evaluation_per_fold/self.numberOfUser
-                result_per_fold.append(mean_evaluation_per_fold)
-            
-            # Proses Tahap 3
-            print("Tahap 2 =", result_per_fold)
-            total_mean_evaluation = sum(result_per_fold)/len(self.train)
-            print("Tahap 3 =", total_mean_evaluation)
-            return total_mean_evaluation
+
+                    # DCG dan IDCG
+                    number_dcg_of_evaluation_per_fold += [self.DCG(u,indexTrain=indexTrain)]
+                    number_idcg_of_evaluation_per_fold += [self.IDCG()]
+
+                # NDCG -> float
+                mean_dcg_per_fold = self.NDCG((sum(number_dcg_of_evaluation_per_fold)/len(self.getUniqueIdOfUserTest(indexTrain=indexTrain))),(sum(number_idcg_of_evaluation_per_fold)/len(self.getUniqueIdOfUserTest(indexTrain=indexTrain))))
+                print(mean_dcg_per_fold)
+                # print("Tahap 1 =", mean_evaluation_per_fold)
+                result_per_fold.append(mean_dcg_per_fold)
+
+            # fold / 5 -> list[5]
+            result = [ fold/len(self.train) for fold in (result_per_fold)]
+
+            return (result)
         
+
         return self.NDCG()
-    
-    def show_evaluation(self) :
-        return self.result_evaluation
