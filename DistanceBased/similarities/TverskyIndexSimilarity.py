@@ -38,7 +38,7 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
                 
             # if not os.path.exists(path_file_prediction) :
             #     SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
-            P.Prediction.__init__(self,data,opsional,self.result_similarity, path_file=path_file_prediction,k=k,toyData=toyData)
+            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional, path_file=path_file_prediction,k=k,toyData=toyData)
             
             # if not toyData and path_evaluation is None :
             #     self.evaluation = NDCG(self.prediction,path_evaluation=path_evaluation)

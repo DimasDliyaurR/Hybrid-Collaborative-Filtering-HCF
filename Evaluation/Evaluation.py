@@ -14,14 +14,14 @@ class Evaluation(MatrixRating) :
         else :
             MatrixRating.__init__(self,data,toyData=toyData)
 
-        self.result_evaluation = self.main_calculation()
+        self.result_evaluation = self.main_calculation_evaluation()
 
     def get_top_n_specific_user(self,u,*,indexTrain : int|None = None) -> list[float] :
         return self.top_n[indexTrain][u] if not self.toyData else self.top_n
 
     def result(self,u: None | int = None,indexTrain : None | int = None) -> float : ...
 
-    def main_calculation(self) -> float :
+    def main_calculation_evaluation(self) -> float :
         """
         The main calculation of evaluation 
         ---------------------------------------

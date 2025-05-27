@@ -21,7 +21,7 @@ class NDCG(Evaluation) :
         return np.array([sum(self.ideal(i)) for i in range(1,n+1)])
 
     def IDCG(self) -> float :
-        return sum(self.ideal_iteration(self.N))
+        return self.ideal_iteration(self.N)
 
     def DCG(self, u: None | int = None, indexTrain : int|None = None) -> float :
         ground_truth = self.groundTruth(u,indexTrain=indexTrain)
@@ -29,15 +29,17 @@ class NDCG(Evaluation) :
 
         result = [[sum(dcg_iteration[:n]) for n in range(1,i+2)] for i in range(self.N)]
 
-        return sum(result[-1])
+        return result[-1]
 
-    def NDCG(self,dcg : list[float]|None = None ,idcg : list[float] | None = None) -> np.array :
+    def NDCG(self,u : None|int = None,indexTrain : None|int = None) -> np.array :
+        
         if not self.toyData :
-            return dcg/idcg
+            return self.DCG(u,indexTrain=indexTrain)/self.IDCG()
+        
         return self.DCG()/self.IDCG()
     
     @override
-    def main_calculation(self) -> float :
+    def main_calculation_evaluation(self) -> float :
         """
         The main calculation of evaluation 
         ---------------------------------------
@@ -57,23 +59,23 @@ class NDCG(Evaluation) :
             result_per_fold = []
             for indexTrain in range(len(self.train)) :
 
-                number_dcg_of_evaluation_per_fold = []
-                number_idcg_of_evaluation_per_fold = []
+                # Ukuran : Jumlah pengguna x N
+                number_ndcg_of_evaluation_per_fold = []
+                unique_user_of_test_fold = self.getUniqueIdOfUserTest(indexTrain=indexTrain)
 
-                for u in self.getUniqueIdOfUserTest(indexTrain=indexTrain) :
+                for u in unique_user_of_test_fold :
 
                     # DCG dan IDCG
-                    number_dcg_of_evaluation_per_fold += [self.DCG(u,indexTrain=indexTrain)]
-                    number_idcg_of_evaluation_per_fold += [self.IDCG()]
+                    number_ndcg_of_evaluation_per_fold += [self.NDCG(u,indexTrain=indexTrain)]
 
-                # NDCG -> float
-                mean_dcg_per_fold = self.NDCG((sum(number_dcg_of_evaluation_per_fold)/len(self.getUniqueIdOfUserTest(indexTrain=indexTrain))),(sum(number_idcg_of_evaluation_per_fold)/len(self.getUniqueIdOfUserTest(indexTrain=indexTrain))))
-                print(mean_dcg_per_fold)
-                # print("Tahap 1 =", mean_evaluation_per_fold)
-                result_per_fold.append(mean_dcg_per_fold)
+                # Mencari rata-rata NDCG dengan menjumlahkan DCG dibagi dengan jumlah pengguna pada data test fold
+                
+                #  Ukuran : 1 x N
+                ndcg_per_fold = [ sum([row[col] for row in number_ndcg_of_evaluation_per_fold ])/len(unique_user_of_test_fold) for col in range(len(number_ndcg_of_evaluation_per_fold[0]))]
 
-            # fold / 5 -> list[5]
-            result = [ fold/len(self.train) for fold in (result_per_fold)]
+                result_per_fold.append(ndcg_per_fold)
+
+            result = [sum([row[col] for row in result_per_fold]) for col in range(len(result_per_fold[0]))]
 
             return (result)
         

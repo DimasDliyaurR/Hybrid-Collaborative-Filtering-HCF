@@ -1,64 +1,45 @@
 import pandas as pd
 from prediction import Prediction
+from DistanceBased import Similarity
+import DistanceBased.similarities as S
+from Evaluation import NDCG
 from MatrixRating import MatrixRating
 
-class HybridCollaborativeFiltering(Prediction) :
+class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
 
-    def __init__(self, similarity_user_based : Prediction, similarity_item_based : Prediction,*,data : str|None = None, gamma : float, N : int = 2) -> None :
+    def __init__(self,
+                 data : str,
+                 object : Similarity, 
+                 *, 
+                 k_user : int,
+                 k_item : int,
+                 gamma : float,
+                 alpha_1 : int|None = None, 
+                 alpha_2 : int|None = None, 
+                 toyData : None|bool = False, 
+                 N : int = 100
+            ) -> None :
+            
         self.gamma = gamma
         self.N = N
-        self.user_based = similarity_user_based
-        self.item_based = similarity_item_based
+        
+        if object == S.TI :
+            self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=alpha_1,alpha_2=alpha_2,toyData=toyData)
+            self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=alpha_1,alpha_2=alpha_2,toyData=toyData)
+        else :
+            self.user_based = object(data,opsional="user-based",k=k_user,toyData=toyData)
+            self.item_based = object(data,opsional="item-based",k=k_item,toyData=toyData)
 
-        self.__validationObject()
-        self.__opsional = similarity_user_based.opsional
-        self.toyData = similarity_user_based.toyData
-        self.k = similarity_user_based.k
-        MatrixRating.__init__(self,data,toyData=self.toyData)
+        self.toyData = toyData
+
+        MatrixRating.__init__(self,data,toyData=toyData)
+
         self.prediction_user_based = self.user_based.get_prediction_array()
         self.prediction_item_based = self.item_based.get_prediction_array()
 
         self.result_hybrid = self.main_calculation()
-        Prediction.__init__(self,data,self.__opsional,k=self.k,prediction=self.result_hybrid,hybrid=True)
-        # self.topN = self.get_top_n()
-
-    def __validationObject(self) :
-        """ 
-        Rule :
-        ------
-        1. Similarity must be same
-        2. Parameter toyData must be same
-        3. Parameter K must be same
-        4. Method must be same (UCF dan ICF)
-
-        Returns :
-        ---------
-        None
-        """
-
-        if self.__checkType() and self.__checkToyData() and self.__checkKParam() and self.__checkOpsionalParam() :
-            return
-
-        if not self.__checkType() :
-            raise ValueError("The Type between object should be same !")
-        elif not self.__checkToyData() :
-            raise ValueError("The toyData parameter between object should be same !")
-        elif not self.__checkKParam() :
-            raise ValueError("The K parameter between object should be same !")
-        elif not self.__checkOpsionalParam() :
-            raise ValueError("The opsional parameter between object should be different !")
-    
-    def __checkType(self) :
-        return type(self.user_based) == type(self.item_based)
-
-    def __checkToyData(self) :
-        return self.user_based.toyData == self.item_based.toyData
-
-    def __checkKParam(self) :
-        return self.user_based.k == self.item_based.k
-
-    def __checkOpsionalParam(self) :
-        return self.user_based.opsional != self.item_based.opsional
+        Prediction.__init__(self,data,prediction=self.result_hybrid,hybrid=True)
+        NDCG.__init__(self,data,self.topN,toyData=toyData,N=N)
 
     def fusion(self,user : int,item : int,*,indexTrain : int|None = None) -> float:
         if self.toyData :

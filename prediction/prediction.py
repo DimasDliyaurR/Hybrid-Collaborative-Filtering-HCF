@@ -7,7 +7,7 @@ import joblib
 
 class Prediction(Mean):
     
-    def __init__(self,data, opsional, similarity : None| list[list[float]] = None,*, prediction : None| list[list[float]] = None, hybrid : None|bool = False, k : int, path_file : str|None = None, toyData : bool = False):
+    def __init__(self,data, similarity : None| list[list[float]] = None,*, opsional : str|None = None, prediction : None| list[list[float]] = None, hybrid : None|bool = False, k : int|None = None, path_file : str|None = None, toyData : bool = False):
         super().__init__(data,opsional=opsional,toyData=toyData)
         if not self.toyData :
             self.k = k
