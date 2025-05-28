@@ -14,8 +14,7 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
                  k_user : int,
                  k_item : int,
                  gamma : float,
-                 alpha_1 : int|None = None, 
-                 alpha_2 : int|None = None, 
+                 additional : dict|None = None,
                  toyData : None|bool = False, 
                  N : int = 100
             ) -> None :
@@ -24,8 +23,8 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
         self.N = N
         
         if object == S.TI :
-            self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=alpha_1,alpha_2=alpha_2,toyData=toyData)
-            self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=alpha_1,alpha_2=alpha_2,toyData=toyData)
+            self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=additional["alpha_1"],alpha_2=additional["alpha_2"],toyData=toyData)
+            self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=additional["alpha_1"],alpha_2=additional["alpha_2"],toyData=toyData)
         else :
             self.user_based = object(data,opsional="user-based",k=k_user,toyData=toyData)
             self.item_based = object(data,opsional="item-based",k=k_item,toyData=toyData)

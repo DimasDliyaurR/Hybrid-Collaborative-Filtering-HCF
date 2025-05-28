@@ -7,10 +7,10 @@ class NDCG(Evaluation) :
     def __init__(self,data, top_n : list[list[list[int]]],*, path_evaluation : str = None,toyData : bool, N : int = 30):
         super().__init__(data, top_n, path_evaluation=path_evaluation,toyData = toyData, N=N)
 
-    def groundTruth(self, u : None | int = None, indexTrain : int|None = None) -> np.array :
+    def groundTruth(self, u : None | int = None, indexFold : int|None = None) -> np.array :
         if not self.toyData :
-            data_test = self.getItemTest(u,indexTrain=indexTrain)
-            return np.array([1 if (self.get_top_n_specific_user(u,indexTrain=indexTrain)[:i+1][-1] in data_test) and len(data_test) > i else 0 for i in range(self.N)])
+            data_test = self.getItemTest(u,indexFold=indexFold)
+            return np.array([1 if (self.get_top_n_specific_user(u,indexFold=indexFold)[:i+1][-1] in data_test) and len(data_test) > i else 0 for i in range(self.N)])
 
         return np.array([1 if (self.top_n[:i+1][-1] in self.data_test) and len(self.top_n) > i else 0 for i in range(self.N)])
 
@@ -23,18 +23,18 @@ class NDCG(Evaluation) :
     def IDCG(self) -> float :
         return self.ideal_iteration(self.N)
 
-    def DCG(self, u: None | int = None, indexTrain : int|None = None) -> float :
-        ground_truth = self.groundTruth(u,indexTrain=indexTrain)
+    def DCG(self, u: None | int = None, indexFold : int|None = None) -> float :
+        ground_truth = self.groundTruth(u,indexFold=indexFold)
         dcg_iteration = [ideal_iteration*ground_truth_index for ideal_iteration,ground_truth_index in zip(self.ideal(self.N),ground_truth)]
 
         result = [[sum(dcg_iteration[:n]) for n in range(1,i+2)] for i in range(self.N)]
 
         return result[-1]
 
-    def NDCG(self,u : None|int = None,indexTrain : None|int = None) -> np.array :
+    def NDCG(self,u : None|int = None,indexFold : None|int = None) -> np.array :
         
         if not self.toyData :
-            return self.DCG(u,indexTrain=indexTrain)/self.IDCG()
+            return self.DCG(u,indexFold=indexFold)/self.IDCG()
         
         return self.DCG()/self.IDCG()
     
@@ -57,16 +57,16 @@ class NDCG(Evaluation) :
         if not self.toyData :
             # list[5]
             result_per_fold = []
-            for indexTrain in range(len(self.train)) :
+            for indexFold in range(len(self.train)) :
 
                 # Ukuran : Jumlah pengguna x N
                 number_ndcg_of_evaluation_per_fold = []
-                unique_user_of_test_fold = self.getUniqueIdOfUserTest(indexTrain=indexTrain)
+                unique_user_of_test_fold = self.getUniqueIdOfUserTest(indexFold=indexFold)
 
                 for u in unique_user_of_test_fold :
 
                     # DCG dan IDCG
-                    number_ndcg_of_evaluation_per_fold += [self.NDCG(u,indexTrain=indexTrain)]
+                    number_ndcg_of_evaluation_per_fold += [self.NDCG(u,indexFold=indexFold)]
 
                 # Mencari rata-rata NDCG dengan menjumlahkan DCG dibagi dengan jumlah pengguna pada data test fold
                 

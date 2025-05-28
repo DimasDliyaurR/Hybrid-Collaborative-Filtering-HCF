@@ -25,20 +25,20 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
 
         if not toyData :
             
-            path_file = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/tversky_index_similarity.joblib"
-            path_file_prediction = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/prediction/{k}/tversky_index_prediction.joblib"
-            print(os.path.exists(path_file))
-            if os.path.exists(path_file) : # and (not os.path.exists(path_file_prediction)) :
-                self.result_similarity = joblib.load(path_file)
-            else :
-                print("Sim Selesai")
-                self.result_similarity = self.main_calculation()
-                print("Sim Mulai")
-                joblib.dump(self.result_similarity,path_file)
+            # path_file = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/tversky_index_similarity.joblib"
+            # path_file_prediction = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/prediction/{k}/tversky_index_prediction.joblib"
+            # print(os.path.exists(path_file))
+            # if os.path.exists(path_file) : # and (not os.path.exists(path_file_prediction)) :
+            #     self.result_similarity = joblib.load(path_file)
+            # else :
+            # print("Sim Selesai")
+            print("Sim Mulai")
+            self.result_similarity = self.main_calculation()
+            # joblib.dump(self.result_similarity,path_file)
                 
             # if not os.path.exists(path_file_prediction) :
             #     SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
-            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional, path_file=path_file_prediction,k=k,toyData=toyData)
+            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData)
             
             # if not toyData and path_evaluation is None :
             #     self.evaluation = NDCG(self.prediction,path_evaluation=path_evaluation)
@@ -46,42 +46,8 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
             print("Sim Mulai")
             self.result_similarity = self.main_calculation()
             print("Sim Selesai")
-            P.Prediction.__init__(self,data,opsional,self.result_similarity,k=k,toyData=toyData)
+            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData)
     
-    # def __metaData(self) :
-
-    #     metadata = {
-    #         "alpa_1": [],
-    #         "alpa_2": [],
-    #         "k": [],
-    #     }
-
-    #     alpha_1 = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
-    #     alpha_2 = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
-
-    #     k = [5,10,15,18,20,25,30,40,50,100,200]
-
-    #     for a in alpha_1 :
-    #         for b in alpha_2 :
-    #             for c in k :
-    #                 metadata["alpa_1"] += [a]
-    #                 metadata["alpa_2"] += [b]
-    #                 metadata["k"] += [c]
-
-    #     metadata["evaluation"] = [0 for _ in range(len(metadata['k']))]
-
-    #     current_index_position = 0
-
-    #     while len(metadata["alpa_1"]) > current_index_position and not self.__checkCurrentIndex(metadata["alpa_1"][current_index_position],metadata["alpa_2"][current_index_position],metadata["k"][current_index_position]) :
-    #         current_index_position += 1
-
-    #     metadata["evaluation"][current_index_position] = self.evaluation.result_evaluation
-
-    #     return metadata
-    
-    # def __checkCurrentIndex(self, alpha_1 : int, alpha_2 : int, k : int) -> bool :
-    #     return alpha_1 == self.alpha_1 and alpha_2 == self.alpha_2 and k == self.k
-
     def __checkSymmetric(self) -> bool :
         return self.alpha_1 == self.alpha_2
     
@@ -94,9 +60,9 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
         return len( set(A) & set(B) ) + (self.alpha_1 * len( set(A) - set(B) )) + self.alpha_2 * len( set(B) - set(A) )
     
     @override
-    def similarity_calculation(self,A, B, indexTrain : int|None = None) -> float :
-        setA = set(self.getItem(A,indexTrain) if self.opsional == "user-based" else self.getUser(A,indexTrain))
-        setB = set(self.getItem(B,indexTrain) if self.opsional == "user-based" else self.getUser(B,indexTrain))
+    def similarity_calculation(self,A, B, indexFold : int|None = None) -> float :
+        setA = set(self.getItem(A,indexFold) if self.opsional == "user-based" else self.getUser(A,indexFold))
+        setB = set(self.getItem(B,indexFold) if self.opsional == "user-based" else self.getUser(B,indexFold))
 
         denom = self.denominator(setA,setB).real
         
@@ -131,9 +97,9 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
         else :
             if self.__checkSymmetric() :
                 result = []
-                for indexTrain in range(len(self.train)) :
-                    print(f"Train Index = {indexTrain}")
-                    matrix = self.train[indexTrain] if self.opsional == "user-based" else transpose(self.train[indexTrain])
+                for indexFold in range(len(self.train)) :
+                    print(f"Train Index = {indexFold}")
+                    matrix = self.train[indexFold] if self.opsional == "user-based" else transpose(self.train[indexFold])
                     
                     temp = array(zeros((len(matrix),len(matrix)))).tolist()
                     for i in range(len(matrix)):
@@ -144,18 +110,18 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
                             if i == j:
                                 result_inner[i][j] = 1
                                 continue
-                            similarity_result = self.similarity_calculation(i, j, indexTrain)
+                            similarity_result = self.similarity_calculation(i, j, indexFold)
                             result_inner[j][i] = similarity_result
                             result_inner[i][j] = similarity_result
                         result.append(result_inner)
                 return result
             
             result = []
-            for indexTrain in range(len(self.train)) :
-                matrix = self.train[indexTrain] if self.opsional == "user-based" else transpose(self.train[indexTrain])
+            for indexFold in range(len(self.train)) :
+                matrix = self.train[indexFold] if self.opsional == "user-based" else transpose(self.train[indexFold])
                 
                 result_train = []
-                print(f"Train Index = {indexTrain}")
+                print(f"Train Index = {indexFold}")
                 
                 for i in range(len(matrix)):
                     result_inner = []
@@ -163,7 +129,7 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
                         if i == j:
                             result_inner.append(1)
                             continue
-                        similarity_result = self.similarity_calculation(i, j, indexTrain)
+                        similarity_result = self.similarity_calculation(i, j, indexFold)
                         result_inner.append(similarity_result)
                     result_train.append(result_inner)
                 result.append(result_train)
@@ -172,11 +138,10 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
     def similarity_result(self) -> list[list[float]]:
         return self.result_similarity
 
-    @override
-    def show(self,indexTrain : int|None = None) :
+    def get_similarity_dataframe(self,indexFold : int|None = None) :
         if self.toyData :
             return pd.DataFrame(self.result_similarity)
         
-        if indexTrain is None :
+        if indexFold is None :
             return pd.DataFrame(self.result_similarity)
-        return pd.DataFrame(self.result_similarity[indexTrain])
+        return pd.DataFrame(self.result_similarity[indexFold])

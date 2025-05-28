@@ -2,7 +2,8 @@ import pandas as pd
 from numpy import transpose
 from MatrixRating import MatrixRating
 class Mean(MatrixRating) :
-    def __init__(self, data,*,opsional="user-based", toyData : bool = False):
+
+    def __init__(self, data,*,opsional="user-based", toyData : bool = False) :
         super().__init__(data,toyData=toyData)
         self.opsional = opsional
         if toyData :
@@ -13,18 +14,17 @@ class Mean(MatrixRating) :
             self.result_mean_training = self.__mean_calculation()
             self.result_mean_centered_training = self.__mean_centered_calculation()
     
-    @staticmethod
-    def __numerator(vector) -> int:
-        return sum(vector)
+    def __numerator(self, u : int, indexFold : None|int = None) -> int:
+        return sum(self.getItemWithValue(u,indexFold=indexFold) if self.opsional == "user-based" else self.getUserWithValue(u,indexFold=indexFold))
 
-    @staticmethod
-    def __denominator(vector) -> int:
-        return len([i for i in vector if i != 0])
+    def __denominator(self, u : int, indexFold : None|int = None) -> int:
+        return len(self.getItem(u,indexFold=indexFold) if self.opsional == "user-based" else self.getUser(u,indexFold=indexFold))
 
     def __mean_calculation(self) -> list[float]:
         if not self.toyData :
-            return [ [ (self.__numerator(vector)/self.__denominator(vector)) if self.__denominator(vector) != 0 else 0 for vector in (self.train[trainIndex] if self.opsional == "user-based" else transpose(self.train[trainIndex])) ] for trainIndex in range(len(self.train)) ]
-        return [ (self.__numerator(vector)/self.__denominator(vector)) if self.__denominator(vector) != 0 else 0 for vector in (self.matrixRating if self.opsional == "user-based" else self.reverseMatrixRating)]
+            return [ [ (self.__numerator(u,indexFold=indexFold)/self.__denominator(u,indexFold=indexFold)) if self.__denominator(u, indexFold=indexFold) != 0 else 0 for u in range(len(self.train[indexFold] if self.opsional == "user-based" else self.train[indexFold][0])) ] for indexFold in range(len(self.train)) ]
+        return [ (self.__numerator(u)/self.__denominator(u)) if self.__denominator(u) != 0 else 0 for u in range(len(self.matrixRating if self.opsional == "user-based" else self.reverseMatrixRating))]
+    
     def __mean_centered_calculation(self) -> list[float]:
         if not self.toyData :
             
@@ -38,27 +38,17 @@ class Mean(MatrixRating) :
                     result.append(result_inner)
                 result_training.append(result if self.opsional == "user-based" else transpose(result))
             return result_training
-
-            # return [
-            #         [
-            #             [
-            #                 (item - self.result_mean_training[trainIndex][index]) if item != 0 else 0 for item in vector
-            #             ] 
-            #             for index,vector in enumerate(self.train[trainIndex] if self.opsional == "user-based" else transpose(self.train[trainIndex]))
-            #         ]
-            #             for trainIndex in range(len(self.train))
-            #         ]
         
         return [[ ((self.matrixRating[u][i] - self.result_mean[u]) if self.opsional == "user-based" else (self.matrixRating[u][i] - self.result_mean[i])) if self.matrixRating[u][i] != 0 else 0 for i in range(len(self.matrixRating[u]))] for u in range(len(self.matrixRating))]
 
-    def show_mean_centered(self, indexTrain : bool |None = None) :
+    def show_mean_centered(self, indexFold : bool |None = None) :
         if not self.toyData :
-            return pd.DataFrame(self.result_mean_centered_training[indexTrain])
+            return pd.DataFrame(self.result_mean_centered_training[indexFold])
         return pd.DataFrame(self.result_mean_centered)
     
-    def show_mean(self, indexTrain : bool | None = None) :
+    def show_mean(self, indexFold : bool | None = None) :
         if not self.toyData :
-            if indexTrain is None :
+            if indexFold is None :
                 return pd.DataFrame(self.result_mean_training)
-            return pd.DataFrame(self.result_mean_training[indexTrain])
+            return pd.DataFrame(self.result_mean_training[indexFold])
         return pd.DataFrame(self.result_mean)
