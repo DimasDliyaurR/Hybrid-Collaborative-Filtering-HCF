@@ -26,9 +26,15 @@ class Prediction(Mean):
             
             if not hybrid :
                 self.similarity = similarity
-            
-                self.result_mean_centered_training_prediction = [transpose(self.result_mean_centered_training[i]).tolist() for i in range(5)] if opsional == "user-based" else self.result_mean_centered_training
-                self.prediction = self.main_prediction_calculation()
+
+                if os.path.exists(path_file) :
+                    self.prediction = joblib.load(path_file)
+                else :
+                    self.result_mean_centered_training_prediction = [transpose(self.result_mean_centered_training[i]).tolist() for i in range(5)] if opsional == "user-based" else self.result_mean_centered_training
+                    self.prediction = self.main_prediction_calculation()
+                    joblib.dump(self.prediction,path_file)
+
+                    
             else :
                 self.prediction = prediction
         else :

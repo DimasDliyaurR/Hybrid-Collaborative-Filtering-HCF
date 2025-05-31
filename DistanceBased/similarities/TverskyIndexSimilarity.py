@@ -25,20 +25,20 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
 
         if not toyData :
             
-            # path_file = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/tversky_index_similarity.joblib"
-            # path_file_prediction = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/prediction/{k}/tversky_index_prediction.joblib"
-            # print(os.path.exists(path_file))
-            # if os.path.exists(path_file) : # and (not os.path.exists(path_file_prediction)) :
-            #     self.result_similarity = joblib.load(path_file)
-            # else :
-            # print("Sim Selesai")
-            print("Sim Mulai")
-            self.result_similarity = self.main_calculation()
-            # joblib.dump(self.result_similarity,path_file)
+            path_file = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/tversky_index_similarity.joblib"
+            path_file_prediction = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/prediction/{k}/tversky_index_prediction.joblib"
+            print(os.path.exists(path_file))
+            if os.path.exists(path_file) : # and (not os.path.exists(path_file_prediction)) :
+                self.result_similarity = joblib.load(path_file)
+            else :
+                print("Sim Selesai")
+                print("Sim Mulai")
+                self.result_similarity = self.main_calculation()
+                joblib.dump(self.result_similarity,path_file)
                 
             # if not os.path.exists(path_file_prediction) :
             #     SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
-            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData)
+            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData,path_file=path_file_prediction)
             
             # if not toyData and path_evaluation is None :
             #     self.evaluation = NDCG(self.prediction,path_evaluation=path_evaluation)
