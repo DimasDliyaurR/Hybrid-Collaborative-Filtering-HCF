@@ -2,29 +2,56 @@ import pandas as pd
 from prediction import Prediction
 from DistanceBased import Similarity
 import DistanceBased.similarities as S
-from Evaluation import NDCG
+from Evaluation import NDCG, Precision, Recall
 from MatrixRating import MatrixRating
+
+class EntryClass :
+    def __init__(self, **kwargs):
+        
+        if kwargs.get("NDCG") :
+            self.kwarg = kwargs
+        
+        if kwargs.get("Precision") :
+            self.kwarg = kwargs
+        
+        if kwargs.get("Recall") :
+            self.kwarg = kwargs
+
+class GetClassEvaluation :
+    def __init__(self, **kwargs) :
+        if kwargs.get("NDCG") :
+            self.name = NDCG
+        
+        if kwargs.get("Precision") :
+            self.name = Precision
+        
+        if kwargs.get("Recall") :
+            self.name = Recall
+        
 
 class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
 
     def __init__(self,
-                 data : str,
-                 object : Similarity, 
-                 *, 
-                 k_user : int,
-                 k_item : int,
-                 gamma : float,
-                 additional : dict|None = None,
-                 toyData : None|bool = False, 
-                 N : int = 100
+                data : str,
+                object : Similarity, 
+                *, 
+                k_user : int,
+                k_item : int,
+                gamma : float,
+                toyData : None|bool = False, 
+                N : int = 100,
+                n : int|None = None,
+                **kwargs
             ) -> None :
-            
+
         self.gamma = gamma
         self.N = N
-        
+
         if object == S.TI :
-            self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=additional["alpha_1"],alpha_2=additional["alpha_2"],toyData=toyData)
-            self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=additional["alpha_1"],alpha_2=additional["alpha_2"],toyData=toyData)
+            if kwargs.keys() not in ["alpha_1","alpha_2"] :
+                raise ValueError("Parameter Alpha 1 dan alpha 2 seharusnya ada")
+            self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
+            self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
         else :
             self.user_based = object(data,opsional="user-based",k=k_user,toyData=toyData)
             self.item_based = object(data,opsional="item-based",k=k_item,toyData=toyData)
@@ -38,7 +65,7 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
 
         self.result_hybrid = self.main_calculation()
         Prediction.__init__(self,data,prediction=self.result_hybrid,hybrid=True)
-        NDCG.__init__(self,data,self.topN,toyData=toyData,N=N)
+        NDCG.__init__(self,data,self.topN,toyData=toyData,N=N,n=n)
 
     def fusion(self,user : int,item : int,*,indexTrain : int|None = None) -> float:
         if self.toyData :
@@ -68,7 +95,7 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
         Returns:
         --------
         object
-             Data prediksi
+            Data prediksi
         """
         if self.user_based.toyData :
             return pd.DataFrame(self.result_hybrid)

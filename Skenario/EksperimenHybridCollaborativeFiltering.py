@@ -1,5 +1,6 @@
 import DistanceBased.similarities as S
 from DistanceBased import Similarity
+# from Evaluation import Evaluation, NDCG, Precision, Recall
 from hybrid import HCF
 import os
 from itertools import product
@@ -8,15 +9,16 @@ import joblib
 class EksperimenHybridCollaborativeFiltering() :
 
     def __init__(self,
-                 data : str ,
-                 *, 
-                 object : Similarity,
-                 path_file : str, 
-                 k_user : float|list[float], 
-                 k_item : float|list[float], 
-                 gamma : float|list[float], 
-                 n : int, 
-                 params : dict|None = None
+            data : str ,
+            *,
+            object : Similarity,
+            path_file : str, 
+            k_user : float|list[float], 
+            k_item : float|list[float], 
+            gamma : float|list[float], 
+            N : int,
+            n : int,
+            params : dict|None = None,
         ) :
 
         self.object = object
@@ -25,6 +27,7 @@ class EksperimenHybridCollaborativeFiltering() :
         self.k_user = k_user
         self.k_item = k_item
         self.gamma = gamma
+        self.N = N
         self.n = n
 
         if os.path.exists(path_file) :
@@ -38,21 +41,23 @@ class EksperimenHybridCollaborativeFiltering() :
             alpha_1 = self.params["alpha_1"]
             alpha_2 = self.params["alpha_2"]
 
-            result = []
+            result = {}
             for gamma_index, k_user_index, k_item_index, alpha_1_index, alpha_2_index in product(self.gamma, self.k_user, self.k_item, alpha_1, alpha_2) :
-
-                hybrid = HCF(self.data,self.object,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index,additional={
+                params = {
                     "alpha_1" : alpha_1_index,
                     "alpha_2" : alpha_2_index,
-                })
+                }
 
-                result.append(hybrid.result_evaluation[:self.n-1])
+                hybrid = HCF(self.data,self.object,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index,additional=params,N=self.N,n=self.n)
+
+                result.setdefault(gamma_index, {}).setdefault(k_user_index, {}).setdefault(k_item_index, {}).setdefault(alpha_1_index, {})[alpha_2_index] = hybrid.result_evaluation
             return result
         else :
-            result = []
+            result = {}
             for gamma_index, k_user_index, k_item_index in product(self.gamma, self.k_user, self.k_item) :
-                hybrid = HCF(self.data,self.object,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index)
+                
+                hybrid = HCF(self.data,self.object,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index, N=self.N,n=self.n)
 
-                result.append(hybrid.result_evaluation[:self.n-1])
+                result.setdefault(gamma_index, {}).setdefault(k_user_index, {})[k_item_index] = hybrid.result_evaluation
 
             return result

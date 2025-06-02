@@ -3,9 +3,10 @@ from MatrixRating import MatrixRating
 
 class Evaluation(MatrixRating) :
 
-    def __init__(self,data, top_n : list[list[list[int]]],*, path_evaluation : str = None,toyData : bool, N : int = 30) -> None:
+    def __init__(self,data, top_n : list[list[list[int]]], *, path_evaluation : str = None,toyData : bool, N : int = 30, n : int|None = 20) -> None:
 
         self.N = N
+        self.n = n
         self.top_n = top_n
 
         if toyData :
@@ -16,10 +17,10 @@ class Evaluation(MatrixRating) :
 
         self.result_evaluation = self.main_calculation_evaluation()
 
-    def get_top_n_specific_user(self,u,*,indexTrain : int|None = None) -> list[float] :
-        return self.top_n[indexTrain][u] if not self.toyData else self.top_n
+    def get_top_n_specific_user(self,u,*,indexFold : int|None = None) -> list[float] :
+        return self.top_n[indexFold][u] if not self.toyData else self.top_n
 
-    def result(self,u: None | int = None,indexTrain : None | int = None) -> float : ...
+    def result(self,u: None | int = None,indexFold : None | int = None) -> float : ...
 
     def main_calculation_evaluation(self) -> float :
         """
@@ -38,16 +39,16 @@ class Evaluation(MatrixRating) :
         """
         if not self.toyData :
             result_per_fold = []
-            for indexTrain in range(len(self.train)) :
+            for indexFold in range(len(self.train)) :
 
                 number_of_evaluation_per_fold = 0
 
-                for u in self.getUniqueIdOfUserTest(indexTrain=indexTrain) :
+                for u in self.getUniqueIdOfUserTest(indexFold=indexFold) :
                     # Proses Tahap 1
-                    number_of_evaluation_per_fold += self.result(u,indexTrain)
+                    number_of_evaluation_per_fold += self.result(u,indexFold)
 
                 # Proses Tahap 2
-                mean_evaluation_per_fold = number_of_evaluation_per_fold/len(self.uniqueIdOfUserAndItemTest["users"][indexTrain])
+                mean_evaluation_per_fold = number_of_evaluation_per_fold/len(self.uniqueIdOfUserAndItemTest["users"][indexFold])
                 # print("Tahap 1 =", mean_evaluation_per_fold)
                 result_per_fold.append(mean_evaluation_per_fold)
             

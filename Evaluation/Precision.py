@@ -4,8 +4,8 @@ from typing_extensions import override
 
 class Precision(Evaluation) :
 
-    def __init__(self,data, top_n : list[list[list[int]]],*, path_evaluation : str = None,toyData : bool, N : int = 30):
-        super().__init__(data, top_n, path_evaluation=path_evaluation,toyData = toyData, N=N)
+    def __init__(self,data, top_n : list[list[list[int]]],*, path_evaluation : str = None,toyData : bool, N : int = 30, n : int}None = None):
+        super().__init__(data, top_n, path_evaluation=path_evaluation,toyData = toyData, N=N, n=n)
 
     def numerator(self,u : None|int = None, indexTrain : None|int = None) -> float :
         if not self.toyData :
