@@ -3,7 +3,7 @@ from DistanceBased import Similarity
 # from Evaluation import Evaluation, NDCG, Precision, Recall
 from hybrid import HCF
 import os
-from itertools import product
+from tqdm.contrib.itertools import product
 import joblib
 
 class EksperimenHybridCollaborativeFiltering() :
@@ -18,7 +18,7 @@ class EksperimenHybridCollaborativeFiltering() :
             gamma : float|list[float], 
             N : int,
             n : int,
-            params : dict|None = None,
+            **params,
         ) :
 
         self.object = object
@@ -34,6 +34,7 @@ class EksperimenHybridCollaborativeFiltering() :
             self.result_skenario = joblib.load(path_file)
         else :
             self.result_skenario = self.skenario_executed()
+            joblib.dump(self.result_skenario,path_file)
 
     def skenario_executed(self) :
 
@@ -43,12 +44,8 @@ class EksperimenHybridCollaborativeFiltering() :
 
             result = {}
             for gamma_index, k_user_index, k_item_index, alpha_1_index, alpha_2_index in product(self.gamma, self.k_user, self.k_item, alpha_1, alpha_2) :
-                params = {
-                    "alpha_1" : alpha_1_index,
-                    "alpha_2" : alpha_2_index,
-                }
 
-                hybrid = HCF(self.data,self.object,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index,additional=params,N=self.N,n=self.n)
+                hybrid = HCF(self.data,self.object,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index,alpha_1=alpha_1_index,alpha_2=alpha_2_index,N=self.N,n=self.n)
 
                 result.setdefault(gamma_index, {}).setdefault(k_user_index, {}).setdefault(k_item_index, {}).setdefault(alpha_1_index, {})[alpha_2_index] = hybrid.result_evaluation
             return result

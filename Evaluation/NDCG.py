@@ -66,14 +66,14 @@ class NDCG(Evaluation) :
                 for u in unique_user_of_test_fold :
 
                     # DCG
-                    number_ndcg_of_evaluation_per_fold += [self.DCG(u,indexFold=indexFold)]
+                    number_ndcg_of_evaluation_per_fold += [self.DCG(u,indexFold=indexFold)[self.n-1] if self.n is not None else self.DCG(u,indexFold=indexFold)]
 
                 # Mencari rata-rata NDCG dengan menjumlahkan DCG dibagi dengan jumlah pengguna pada data test fold
                 #  Ukuran : 1 x N
                 # ndcg_per_fold = [ sum([row[col] for row in number_ndcg_of_evaluation_per_fold ])/len(unique_user_of_test_fold) for col in range(len(number_ndcg_of_evaluation_per_fold[0]))]
 
                 # Ukuran Jumlah pengguna data Test x n
-                result_per_fold.append(number_ndcg_of_evaluation_per_fold[:self.n] if self.n is not None else number_ndcg_of_evaluation_per_fold)
+                result_per_fold.append(number_ndcg_of_evaluation_per_fold)
 
             # result = [sum([row[col] for row in result_per_fold]) for col in range(len(result_per_fold[0]))]
 

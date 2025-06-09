@@ -2,31 +2,8 @@ import pandas as pd
 from prediction import Prediction
 from DistanceBased import Similarity
 import DistanceBased.similarities as S
-from Evaluation import NDCG, Precision, Recall
+from Evaluation import NDCG
 from MatrixRating import MatrixRating
-
-class EntryClass :
-    def __init__(self, **kwargs):
-        
-        if kwargs.get("NDCG") :
-            self.kwarg = kwargs
-        
-        if kwargs.get("Precision") :
-            self.kwarg = kwargs
-        
-        if kwargs.get("Recall") :
-            self.kwarg = kwargs
-
-class GetClassEvaluation :
-    def __init__(self, **kwargs) :
-        if kwargs.get("NDCG") :
-            self.name = NDCG
-        
-        if kwargs.get("Precision") :
-            self.name = Precision
-        
-        if kwargs.get("Recall") :
-            self.name = Recall
         
 
 class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
@@ -48,8 +25,9 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
         self.N = N
 
         if object == S.TI :
-            if kwargs.keys() not in ["alpha_1","alpha_2"] :
+            if "alpha_1" not in kwargs and "alpha_2" not in kwargs :
                 raise ValueError("Parameter Alpha 1 dan alpha 2 seharusnya ada")
+            
             self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
             self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
         else :
@@ -67,28 +45,28 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
         Prediction.__init__(self,data,prediction=self.result_hybrid,hybrid=True)
         NDCG.__init__(self,data,self.topN,toyData=toyData,N=N,n=n)
 
-    def fusion(self,user : int,item : int,*,indexTrain : int|None = None) -> float:
+    def fusion(self,user : int,item : int,*,indexFold : int|None = None) -> float:
         if self.toyData :
             return (self.gamma * self.prediction_user_based[user][item] + (1-self.gamma) * self.prediction_item_based[user][item])
-        return (self.gamma * self.prediction_user_based[indexTrain][user][item] + (1-self.gamma) * self.prediction_item_based[indexTrain][user][item])
+        return (self.gamma * self.prediction_user_based[indexFold][user][item] + (1-self.gamma) * self.prediction_item_based[indexFold][user][item])
 
     def main_calculation(self) -> list[list[float]]:
         if self.toyData :
             return [[(self.fusion(user,item)) for item in self.getItem(user)]for user in range(len(self.matrixRating))]
 
         result = []
-        for indexTrain in range(len(self.train)) :
+        for indexFold in range(len(self.train)) :
             result_train = []
-            for user in range(len(self.train[indexTrain])) :
+            for user in range(len(self.train[indexFold])) :
                 result_inner = []
-                unrated_item = self.getItem(user,indexTrain=indexTrain,interacted=False)
-                for item in range(len(self.train[indexTrain][user])) :
-                    result_inner.append(self.fusion(user,item,indexTrain=indexTrain) if item in unrated_item else self.train[indexTrain][user][item])
+                unrated_item = self.getItem(user,indexFold=indexFold,interacted=False)
+                for item in range(len(self.train[indexFold][user])) :
+                    result_inner.append(self.fusion(user,item,indexFold=indexFold) if item in unrated_item else self.train[indexFold][user][item])
                 result_train.append(result_inner)
             result.append(result_train)
         return result
 
-    def get_data_frame(self,indexTrain : None|int = None) -> pd :
+    def get_data_frame(self,indexFold : None|int = None) -> pd :
         """
         Mengembalikan hasil prediksi dalam bentuk dataframe
 
@@ -100,9 +78,9 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
         if self.user_based.toyData :
             return pd.DataFrame(self.result_hybrid)
         
-        if indexTrain is None :
+        if indexFold is None :
             return pd.DataFrame(self.result_hybrid)
-        return pd.DataFrame(self.result_hybrid[indexTrain])
+        return pd.DataFrame(self.result_hybrid[indexFold])
     
     def get_top_n_fusion(self) :
         """

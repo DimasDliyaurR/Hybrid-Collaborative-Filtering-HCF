@@ -108,7 +108,6 @@ class Prediction(Mean):
         else :
             result = []
             for indexFold in range(len(self.train)) :
-                print(f"Prediction Train {indexFold}")
                 
                 result_train = []
                 for u in range(len(self.train[indexFold])) :
@@ -140,7 +139,6 @@ class Prediction(Mean):
         else :
             result = []
             for indexFold in range(len(self.train)) :
-                print(f"Train index = {indexFold}")
                 result_inner = []
                 for u in range(len(self.train[indexFold])) :
                     unratedItem = self.getItem(u,indexFold=indexFold,interacted=False)
