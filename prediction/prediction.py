@@ -4,6 +4,7 @@ from DistanceBased import Mean
 from operator import itemgetter,mul
 import os
 import joblib
+from tqdm import tqdm
 
 class Prediction(Mean):
     
@@ -97,7 +98,7 @@ class Prediction(Mean):
 
         if self.toyData :
             result = []
-            for u in range(len(self.matrixRating)) :
+            for u in tqdm(range(len(self.matrixRating)),desc="Prediction") :
                 result_inner = []
                 for i in range(len(self.matrixRating[0])) :
                     value = self.prediction_calculation(u,i) if self.matrixRating[u][i] == 0 else  self.matrixRating[u][i]
@@ -107,7 +108,7 @@ class Prediction(Mean):
         
         else :
             result = []
-            for indexFold in range(len(self.train)) :
+            for indexFold in tqdm(range(len(self.train)),desc="Prediction") :
                 
                 result_train = []
                 for u in range(len(self.train[indexFold])) :
@@ -170,7 +171,7 @@ class Prediction(Mean):
     def get_prediction_array(self):
         return array(self.prediction).tolist()
 
-    def get_prediction_data_frame(self, indexFold : None|int = None):
+    def show_prediction(self, indexFold : None|int = None):
         if indexFold is None :
             return pd.DataFrame(self.prediction)
         return pd.DataFrame(self.prediction[indexFold])

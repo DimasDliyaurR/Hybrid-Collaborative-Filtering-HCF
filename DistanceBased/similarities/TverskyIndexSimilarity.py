@@ -1,5 +1,6 @@
 import DistanceBased as SDB
 import prediction as P
+from tqdm import tqdm
 
 from typing_extensions import override
 
@@ -11,13 +12,13 @@ from numpy import (
 )
 
 from MatrixRating import MatrixRating
-# from Evaluation import NDCG
+
 import os
 import joblib
 
-class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
+class TverskyIndexSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
     
-    def __init__(self, data, *,path_evaluation : None|str = None, toyData : bool|None = False, opsional="user-based",k=2,alpha_1=0.7,alpha_2=0.2):
+    def __init__(self, data, *, toyData : bool|None = False, opsional="user-based",k=2,alpha_1=0.7,alpha_2=0.2):
         SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
         
         self.alpha_1 = alpha_1
@@ -27,20 +28,15 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
             
             path_file = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/tversky_index_similarity.joblib"
             path_file_prediction = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/prediction/{k}/tversky_index_prediction.joblib"
-            # print(path_file)
-            # print(os.path.exists(path_file))
-            if os.path.exists(path_file) : # and (not os.path.exists(path_file_prediction)) :
+            
+            if os.path.exists(path_file) :
                 self.result_similarity = joblib.load(path_file)
             else :
                 self.result_similarity = self.main_calculation()
                 joblib.dump(self.result_similarity,path_file)
                 
-            # if not os.path.exists(path_file_prediction) :
-            #     SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
             P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData,path_file=path_file_prediction)
             
-            # if not toyData and path_evaluation is None :
-            #     self.evaluation = NDCG(self.prediction,path_evaluation=path_evaluation)
         else :
             self.result_similarity = self.main_calculation()
             P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData)
@@ -72,7 +68,7 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
             result = [[] for _ in range(len(matrix))]
             
             if self.__checkSymmetric() :
-                for i in range(len(matrix)):
+                for i in tqdm(range(len(matrix))):
                     for j in range(i,len(matrix)):
                         if i == j:
                             result[i].append(1)
@@ -82,7 +78,7 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
                         result[j].append(similarity_result)
                 return result
             
-            for i in range(len(matrix)):
+            for i in tqdm(range(len(matrix))):
                 for j in range(len(matrix)):
                     if i == j:
                         result[i].append(1)
@@ -94,7 +90,8 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
         else :
             if self.__checkSymmetric() :
                 result = []
-                for indexFold in range(len(self.train)) :
+                
+                for indexFold in tqdm(range(len(self.train)),desc="Tversky Index") :
                     matrix = self.train[indexFold] if self.opsional == "user-based" else transpose(self.train[indexFold])
                     
                     temp = array(zeros((len(matrix),len(matrix)))).tolist()
@@ -112,9 +109,9 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
                 return result
             
             result = []
-            for indexFold in range(len(self.train)) :
+            for indexFold in tqdm(range(len(self.train)),desc="Tversky Index") :
                 matrix = self.train[indexFold] if self.opsional == "user-based" else transpose(self.train[indexFold])
-                # print("Train Fold ",indexFold)
+
                 result_train = []
                 
                 for i in range(len(matrix)):
@@ -132,7 +129,7 @@ class TverskyIndex(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
     def similarity_result(self) -> list[list[float]]:
         return self.result_similarity
 
-    def get_similarity_dataframe(self,indexFold : int|None = None) :
+    def show_similarity(self,indexFold : int|None = None) :
         if self.toyData :
             return pd.DataFrame(self.result_similarity)
         
