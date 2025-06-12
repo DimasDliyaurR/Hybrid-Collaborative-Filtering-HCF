@@ -14,6 +14,7 @@ from MatrixRating import MatrixRating
 # from Evaluation import NDCG
 import os
 import joblib
+from tqdm import tqdm
 
 class DiceCoefficientSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
     
@@ -23,7 +24,7 @@ class DiceCoefficientSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRa
         if not toyData :
             
             path_file = "cache/dice_coefficient/" + ("user_based" if opsional == "user-based" else "item_based") + f"/dice_coefficient_similarity.joblib"
-            path_file_prediction = "cache/dice_coefficient/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{k}/dice_coefficient_prediction.joblib"
+            path_file_prediction = "cache/dice_coefficient/" + ("user_based" if opsional == "user-based" else "item_based") + f"/prediction/{k}/dice_coefficient_prediction.joblib"
             
 
             if os.path.exists(path_file) :
@@ -37,9 +38,6 @@ class DiceCoefficientSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRa
         else :
             self.result_similarity = self.main_calculation()
             P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData)
-    
-    def __checkSymmetric(self) -> bool :
-        return self.alpha_1 == self.alpha_2
     
     @override
     def numerator(self, A:list, B:list) -> list[float]:
@@ -64,68 +62,39 @@ class DiceCoefficientSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRa
             matrix = self.matrixRating if self.opsional == "user-based" else self.reverseMatrixRating
             result = [[] for _ in range(len(matrix))]
             
-            if self.__checkSymmetric() :
-                for i in range(len(matrix)):
-                    for j in range(i,len(matrix)):
-                        if i == j:
-                            result[i].append(1)
-                            continue
-                        similarity_result = self.similarity_calculation(int(i), int(j))
-                        result[i].append(similarity_result)
-                        result[j].append(similarity_result)
-                return result
-            
-            for i in range(len(matrix)):
-                for j in range(len(matrix)):
+            for i in tqdm(range(len(matrix)),desc="Dice Coefficient"):
+                for j in range(i,len(matrix)):
                     if i == j:
                         result[i].append(1)
                         continue
                     similarity_result = self.similarity_calculation(int(i), int(j))
                     result[i].append(similarity_result)
+                    result[j].append(similarity_result)
             return result
             
         else :
-            if self.__checkSymmetric() :
-                result = []
-                for indexFold in range(len(self.train)) :
-                    matrix = self.train[indexFold] if self.opsional == "user-based" else transpose(self.train[indexFold])
-                    
-                    temp = array(zeros((len(matrix),len(matrix)))).tolist()
-                    for i in range(len(matrix)):
-                        
-                        result_inner = temp.copy()
-                        for j in range(i,len(matrix)):
-                            if i == j:
-                                result_inner[i][j] = 1
-                                continue
-                            similarity_result = self.similarity_calculation(i, j, indexFold)
-                            result_inner[j][i] = similarity_result
-                            result_inner[i][j] = similarity_result
-                        result.append(result_inner)
-                return result
-            
             result = []
-            for indexFold in range(len(self.train)) :
+            for indexFold in tqdm(range(len(self.train)),desc="Dice Coefficient") :
                 matrix = self.train[indexFold] if self.opsional == "user-based" else transpose(self.train[indexFold])
-                # print("Train Fold ",indexFold)
-                result_train = []
                 
+                temp = array(zeros((len(matrix),len(matrix)))).tolist()
                 for i in range(len(matrix)):
-                    result_inner = []
-                    for j in range(len(matrix)):
+                    
+                    result_inner = temp.copy()
+                    for j in range(i,len(matrix)):
                         if i == j:
-                            result_inner.append(1)
+                            result_inner[i][j] = 1
                             continue
                         similarity_result = self.similarity_calculation(i, j, indexFold)
-                        result_inner.append(similarity_result)
-                    result_train.append(result_inner)
-                result.append(result_train)
+                        result_inner[j][i] = similarity_result
+                        result_inner[i][j] = similarity_result
+                    result.append(result_inner)
             return result
         
     def similarity_result(self) -> list[list[float]]:
         return self.result_similarity
 
-    def get_similarity_dataframe(self,indexFold : int|None = None) :
+    def show_similarity(self,indexFold : int|None = None) :
         if self.toyData :
             return pd.DataFrame(self.result_similarity)
         
