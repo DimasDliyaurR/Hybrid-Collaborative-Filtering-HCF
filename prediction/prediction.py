@@ -61,7 +61,7 @@ class Prediction(Mean):
         else :
             return sum(list(map(lambda x : abs(x),itemgetter(*nearestNeighborhood)(self.similarity[indexFold][u if self.opsional == "user-based" else i])))) if len(nearestNeighborhood) > 1 else abs(self.similarity[indexFold][u if self.opsional == "user-based" else i][nearestNeighborhood[0]])
 
-    def selectedNeighborhood(self,u,i, indexFold : None|int = None) -> list[float]:
+    def selected_neighborhood(self,u,i, indexFold : None|int = None) -> list[float]:
 
         if self.toyData :
             indices = list(set(self.getUser(i))) if self.opsional == "user-based" else list(set(self.getItem(u)))
@@ -81,10 +81,10 @@ class Prediction(Mean):
     def prediction_calculation(self, u, i, indexFold : int|None = None) -> float :
         
         if self.toyData :
-            nearestNeighborhood = self.selectedNeighborhood(u,i)
+            nearestNeighborhood = self.selected_neighborhood(u,i)
             average = self.result_mean[u if self.opsional == "user-based" else i]
         else :
-            nearestNeighborhood = self.selectedNeighborhood(u,i, indexFold)
+            nearestNeighborhood = self.selected_neighborhood(u,i, indexFold)
             average = self.result_mean_training[indexFold][u if self.opsional == "user-based" else i]
 
         if len(nearestNeighborhood) != 0 :
@@ -97,26 +97,17 @@ class Prediction(Mean):
     def main_prediction_calculation(self) -> None :
 
         if self.toyData :
-            result = []
+            result = self.matrixRating.copy()
             for u in tqdm(range(len(self.matrixRating)),desc="Prediction") :
-                result_inner = []
                 for i in range(len(self.matrixRating[0])) :
-                    value = self.prediction_calculation(u,i) if self.matrixRating[u][i] == 0 else  self.matrixRating[u][i]
-                    result_inner.append(value)
-                result.append(result_inner)
+                    result[indexFold][u][i] = self.prediction_calculation(u,i) if self.matrixRating[u][i] == 0 else  self.matrixRating[u][i]
             return result
-        
         else :
-            result = []
+            result = self.train.copy()
             for indexFold in tqdm(range(len(self.train)),desc="Prediction") :
-                
-                result_train = []
                 for u in range(len(self.train[indexFold])) :
-                    result_inner = []
-                    for i in range(len(self.train[indexFold][u])) :
-                        result_inner.append(self.prediction_calculation(u,i,indexFold) if self.train[indexFold][u][i] == 0 else  self.train[indexFold][u][i])
-                    result_train.append(result_inner)
-                result.append(result_train)
+                    for i in self.getItem(u,indexFold=indexFold, interacted=False) :
+                        result[indexFold][u][i] = self.prediction_calculation(u,i,indexFold)
             return result
     
     def get_top_n(self) :
@@ -126,7 +117,6 @@ class Prediction(Mean):
                 unratedItem = self.getItem(i,interacted=False)
                 
                 if len(unratedItem) > 1 :
-                    # valueOfPrediction = itemgetter(*unratedItem)(self.prediction[i]) if len(unratedItem) > 1 else self.prediction[i][unratedItem[0]]
 
                     if len(unratedItem) < 1 :
                         result_inner.append([])
@@ -144,12 +134,6 @@ class Prediction(Mean):
                 for u in range(len(self.train[indexFold])) :
                     unratedItem = self.getItem(u,indexFold=indexFold,interacted=False)
                     if len(unratedItem) > 1 :
-                        # Prediction training : 5 x 943 x 1682 
-                        # Prediction training : indexFold x u x {iteration}
-                        # If number of unrated Item have less then 1 : Acces Prediction training used index
-                        # However, if The number of unrated item have more than 1 , Acces prediction should be with itemgetter function
-                        # valueOfPrediction = itemgetter(*unratedItem)(self.prediction[indexFold][u]) if len(unratedItem) > 1 else self.prediction[indexFold][u][unratedItem[0]]
-
                         if len(unratedItem) == 0 :
                             result_inner.append([])
                             continue
