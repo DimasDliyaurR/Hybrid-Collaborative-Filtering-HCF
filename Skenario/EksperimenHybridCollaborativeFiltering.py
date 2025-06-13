@@ -1,6 +1,5 @@
 import DistanceBased.similarities as S
 from DistanceBased import Similarity
-# from Evaluation import Evaluation, NDCG, Precision, Recall
 from hybrid import HCF
 import os
 from tqdm.contrib.itertools import product

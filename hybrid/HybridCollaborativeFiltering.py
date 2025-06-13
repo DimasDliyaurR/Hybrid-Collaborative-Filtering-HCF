@@ -4,6 +4,8 @@ from DistanceBased import Similarity
 import DistanceBased.similarities as S
 from Evaluation import NDCG
 from MatrixRating import MatrixRating
+import os
+import joblib
         
 
 class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
@@ -18,30 +20,36 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
                 toyData : None|bool = False, 
                 N : int = 100,
                 n : int|None = None,
+                path_file : str|None,
                 **kwargs
             ) -> None :
 
         self.gamma = gamma
         self.N = N
 
-        if object == S.TI :
-            if "alpha_1" not in kwargs and "alpha_2" not in kwargs :
-                raise ValueError("Parameter Alpha 1 dan alpha 2 seharusnya ada")
-            
-            self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
-            self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
+        if os.path.exists(path_file) :
+            self.result_hybrid = joblib.load(path_file)
         else :
-            self.user_based = object(data,opsional="user-based",k=k_user,toyData=toyData)
-            self.item_based = object(data,opsional="item-based",k=k_item,toyData=toyData)
 
-        self.toyData = toyData
+            if object == S.TI :
+                if "alpha_1" not in kwargs and "alpha_2" not in kwargs :
+                    raise ValueError("Parameter Alpha 1 dan alpha 2 seharusnya ada")
+                
+                self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
+                self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
+            else :
+                self.user_based = object(data,opsional="user-based",k=k_user,toyData=toyData)
+                self.item_based = object(data,opsional="item-based",k=k_item,toyData=toyData)
 
-        MatrixRating.__init__(self,data,toyData=toyData)
+            self.toyData = toyData
 
-        self.prediction_user_based = self.user_based.get_prediction_array()
-        self.prediction_item_based = self.item_based.get_prediction_array()
+            MatrixRating.__init__(self,data,toyData=toyData)
 
-        self.result_hybrid = self.main_calculation()
+            self.prediction_user_based = self.user_based.get_prediction_array()
+            self.prediction_item_based = self.item_based.get_prediction_array()
+
+            self.result_hybrid = self.main_calculation()
+        
         Prediction.__init__(self,data,prediction=self.result_hybrid,hybrid=True)
         NDCG.__init__(self,data,self.topN,toyData=toyData,N=N,n=n)
 
