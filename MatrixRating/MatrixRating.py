@@ -24,7 +24,7 @@ class MatrixRating():
         
         if toyData :
             if type(data) is str :
-                raise ValueError(f"{self} matrix should be type list")
+                raise ValueError(f"{self} data should be type list")
 
             self.matrixRating = data
             self.reverseMatrixRating = np.transpose(self.matrixRating).tolist()

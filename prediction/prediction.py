@@ -3,6 +3,7 @@ import pandas as pd
 from DistanceBased import Mean
 from operator import itemgetter,mul
 import os
+import copy
 import joblib
 from tqdm import tqdm
 
@@ -34,15 +35,20 @@ class Prediction(Mean):
                     self.result_mean_centered_training_prediction = [transpose(self.result_mean_centered_training[i]).tolist() for i in range(5)] if opsional == "user-based" else self.result_mean_centered_training
                     self.prediction = self.main_prediction_calculation()
                     joblib.dump(self.prediction,path_file)
-
-                    
             else :
-                self.prediction = prediction
+                self.prediction = prediction      
         else :
-            self.similarity = similarity if opsional == "user-based" else transpose(similarity)
-            self.result_mean_centered_for_prediction = transpose(self.result_mean_centered).tolist() if opsional == "user-based" else self.result_mean_centered
-            self.k = k
-            self.prediction = self.main_prediction_calculation()
+            if not hybrid :
+                self.similarity = similarity if opsional == "user-based" else transpose(similarity)
+                self.data_for_prediction = copy.deepcopy(data)
+                self.matrixRating = data
+                self.reverseMatrixRating = transpose(self.matrixRating).tolist()
+                self.result_mean_centered_for_prediction = transpose(self.result_mean_centered).tolist() if opsional == "user-based" else self.result_mean_centered
+                self.k = k
+                self.prediction = self.main_prediction_calculation()
+            else :
+                self.data_for_prediction = copy.deepcopy(data)
+                self.prediction = prediction      
 
         self.topN = self.get_top_n()
 
@@ -51,7 +57,7 @@ class Prediction(Mean):
             return sum( list( 
                 map(mul,itemgetter(*nearestNeighborhood)(self.similarity[ u  if self.opsional == "user-based" else i ]),
                 itemgetter(*nearestNeighborhood)(self.result_mean_centered_for_prediction[ u  if self.opsional == "item-based" else i ])) 
-                )) if len(nearestNeighborhood) > 1 else (self.similarity[ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]]*self.result_mean_centered_for_prediction[ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]])
+                )) if len(nearestNeighborhood) > 1 else (self.similarity[ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]]*self.result_mean_centered_for_prediction[ u  if self.opsional == "item-based" else i ][nearestNeighborhood[0]])
         else :
             return sum( list( map(mul,itemgetter(*nearestNeighborhood)(self.similarity[indexFold][ u  if self.opsional == "user-based" else i ]),itemgetter(*nearestNeighborhood)(self.result_mean_centered_training_prediction[indexFold][ i  if self.opsional == "user-based" else u ])) ) ) if len(nearestNeighborhood) > 1 else (self.similarity[indexFold][ u  if self.opsional == "user-based" else i ][nearestNeighborhood[0]]*self.result_mean_centered_training_prediction[indexFold][ i  if self.opsional == "user-based" else u ][nearestNeighborhood[0]])
     
@@ -92,15 +98,16 @@ class Prediction(Mean):
             denom = self.__denominator(u,i,nearestNeighborhood,indexFold)
         else :
             return 0
+
         return (average + (numerator / denom)) if denom != 0 else 0
 
     def main_prediction_calculation(self) -> None :
 
         if self.toyData :
-            result = self.matrixRating.copy()
+            result = copy.deepcopy(self.data_for_prediction)
             for u in tqdm(range(len(self.matrixRating)),desc="Prediction") :
                 for i in range(len(self.matrixRating[0])) :
-                    result[indexFold][u][i] = self.prediction_calculation(u,i) if self.matrixRating[u][i] == 0 else  self.matrixRating[u][i]
+                    result[u][i] = self.prediction_calculation(u,i) if self.matrixRating[u][i] == 0 else self.matrixRating[u][i]
             return result
         else :
             result = self.train.copy()
@@ -113,17 +120,17 @@ class Prediction(Mean):
     def get_top_n(self) :
         if self.toyData :
             result = []
-            for i in range(len(self.matrixRating)) :
+            for i in range(len(self.data_for_prediction) ) :
                 unratedItem = self.getItem(i,interacted=False)
-                
                 if len(unratedItem) > 1 :
 
-                    if len(unratedItem) < 1 :
+                    if len(unratedItem) == 0 :
                         result_inner.append([])
+                        continue
+                    
+                    sorted_array = sorted(unratedItem,key=lambda x: self.prediction[i][x],reverse=True) if len(unratedItem) > 1 else self.prediction[u][unratedItem[0]]
 
-                    sorted_array = sorted(unratedItem,key=lambda x: self.prediction[i][x],reverse=True)
-
-                    result.append(sorted_array) if len(unratedItem) > 1 else self.prediction[i][unratedItem[0]]
+                    result.append(sorted_array)
                 else :
                     result.append(unratedItem)
             return result

@@ -8,7 +8,6 @@ class Mean(MatrixRating) :
         self.opsional = opsional
         if toyData :
             self.result_mean = self.__mean_calculation()
-            print(self.result_mean)
             self.result_mean_centered = self.__mean_centered_calculation()
         else :
             self.result_mean_training = self.__mean_calculation()

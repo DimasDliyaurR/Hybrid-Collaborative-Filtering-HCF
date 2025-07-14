@@ -27,7 +27,8 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
         self.gamma = gamma
         self.N = N
 
-        if os.path.exists(path_file) :
+
+        if not toyData and os.path.exists(path_file)  :
             self.result_hybrid = joblib.load(path_file)
         else :
 
@@ -36,7 +37,9 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
                     raise ValueError("Parameter Alpha 1 dan alpha 2 seharusnya ada")
                 
                 self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
+                
                 self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
+                
             else :
                 self.user_based = object(data,opsional="user-based",k=k_user,toyData=toyData)
                 self.item_based = object(data,opsional="item-based",k=k_item,toyData=toyData)
@@ -45,12 +48,14 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
 
             MatrixRating.__init__(self,data,toyData=toyData)
 
+            
             self.prediction_user_based = self.user_based.get_prediction_array()
+            
             self.prediction_item_based = self.item_based.get_prediction_array()
 
             self.result_hybrid = self.main_calculation()
         
-        Prediction.__init__(self,data,prediction=self.result_hybrid,hybrid=True)
+        Prediction.__init__(self,data,prediction=self.result_hybrid,hybrid=True,toyData=toyData)
         NDCG.__init__(self,data,self.topN,toyData=toyData,N=N,n=n)
 
     def fusion(self,user : int,item : int,*,indexFold : int|None = None) -> float:
@@ -60,8 +65,15 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
 
     def main_calculation(self) -> list[list[float]]:
         if self.toyData :
-            return [[(self.fusion(user,item)) for item in self.getItem(user)]for user in range(len(self.matrixRating))]
-
+            result = []
+            for user in range(len(self.matrixRating)) :
+                result_inner = []
+                unrated_item = self.getItem(user,interacted=False)
+                for item in range(len(self.matrixRating[user])) :
+                    result_inner.append(self.fusion(user,item) if item in unrated_item else self.matrixRating[user][item])
+                result.append(result_inner)
+            return result
+        
         result = []
         for indexFold in range(len(self.train)) :
             result_train = []
@@ -100,3 +112,4 @@ class HybridCollaborativeFiltering(NDCG,Prediction,MatrixRating) :
             DataFrame yang berisi hasil prediksi.
         """
         return pd.DataFrame(self.topN)
+
