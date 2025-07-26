@@ -20,7 +20,8 @@ def HybridCollaborativeFilteringMain(
                 N : int = 100,
                 n : int|None = None,
                 path_file : str|None,
-                **kwargs) :
+                **kwargs
+                ) :
     
     
     class HybridCollaborativeFiltering(object_evaluation,Prediction,MatrixRating) :
@@ -52,18 +53,18 @@ def HybridCollaborativeFilteringMain(
                     if "alpha_1" not in kwargs and "alpha_2" not in kwargs :
                         raise ValueError("Parameter Alpha 1 dan alpha 2 seharusnya ada")
                     
-                    self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
+                    self.user_based = object(data,opsional="user-based",k=k_user,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData,time=time)
                     
-                    self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData)
+                    self.item_based = object(data,opsional="item-based",k=k_item,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData,time=time)
                     
                 else :
-                    self.user_based = object(data,opsional="user-based",k=k_user,toyData=toyData)
-                    self.item_based = object(data,opsional="item-based",k=k_item,toyData=toyData)
+                    self.user_based = object(data,opsional="user-based",k=k_user,toyData=toyData,time=time)
+                    self.item_based = object(data,opsional="item-based",k=k_item,toyData=toyData,time=time)
 
                 self.toyData = toyData
 
                 if not toyData and time :
-                    self.time_computation_per_fold = []
+                    self.time_computation_prediction_per_fold = []
 
                 MatrixRating.__init__(self,data,toyData=toyData)
 
@@ -105,7 +106,7 @@ def HybridCollaborativeFilteringMain(
                     result_train.append(result_inner)
                 result.append(result_train)
                 t2 = time.time() if self.time else ""
-                self.time_computation_per_fold.append(t2-t1) if self.time else ""
+                self.time_computation_prediction_per_fold.append(t2-t1) if self.time else ""
             return result
 
         def get_data_frame(self,indexFold : None|int = None) -> pd :
@@ -135,11 +136,35 @@ def HybridCollaborativeFilteringMain(
             """
             return pd.DataFrame(self.topN)
         
-        def show_time_computation(self) :
-            return pd.DataFrame(self.time_computation_per_fold)
+        def show_time_computation_prediction_hybrid(self) :
+            
+            if self.toyData :
+                ValueError("Mode waktu komputasi, tidak bisa dalam mode toy data")
+            
+            if self.time :
+                return pd.DataFrame(self.time_computation_prediction_per_fold)
+
+            ValueError("Tidak dalam mode waktu komputasi, perlu nilai True pada parameter time")
         
-        def show_time_computation_array(self) :
-            return self.time_computation_per_fold
+        def show_time_computation_similarity_hybrid(self,opsional = "user-based",indexFold : int|None = None) :
+            if self.toyData :
+                ValueError("Mode waktu komputasi, tidak bisa dalam mode toy data")
+            
+            if self.time :
+                return self.user_based.show_time_computation_similarity(indexFold) if opsional == "user-based" else self.item_based.show_time_computation_similarity(indexFold)
+
+            ValueError("Tidak dalam mode waktu komputasi, perlu nilai True pada parameter time")
+
+        
+        def show_time_computation_array(self,opsional,indexFold : int|None = None) :
+            if self.toyData :
+                ValueError("Mode waktu komputasi, tidak bisa dalam mode toy data")
+            
+            if self.time :
+                return self.user_based.show_time_computation_similarity_array(indexFold) if opsional == "user-based" else self.item_based.show_time_computation_similarity_array(indexFold)
+
+            ValueError("Tidak dalam mode waktu komputasi, perlu nilai True pada parameter time")
+
     
     return HybridCollaborativeFiltering(
         data,

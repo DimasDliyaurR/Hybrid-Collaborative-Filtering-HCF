@@ -8,6 +8,7 @@ class Precision(Evaluation) :
         super().__init__(data, top_n, path_evaluation=path_evaluation,toyData = toyData, N=N, n=n)
 
     def numerator(self,u : None|int = None, indexTrain : None|int = None) -> float :
+        
         if not self.toyData :
             return sum([len(set(self.top_n[indexTrain][u][:i]).intersection(set(self.test[indexTrain][u]))) for i in range(1,self.N+1)])
         return sum([len(set(self.top_n[:i]).intersection(set(self.data_test))) for i in range(1,self.N+1)])

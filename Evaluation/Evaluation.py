@@ -1,5 +1,5 @@
-import numpy as np
 from MatrixRating import MatrixRating
+from tqdm import tqdm
 
 class Evaluation(MatrixRating) :
 
@@ -39,24 +39,17 @@ class Evaluation(MatrixRating) :
         """
         if not self.toyData :
             result_per_fold = []
-            for indexFold in range(len(self.train)) :
+            for indexFold in tqdm(range(len(self.train))) :
 
-                number_of_evaluation_per_fold = 0
+                number_of_evaluation_per_fold = []
 
                 for u in self.getUniqueIdOfUserTest(indexFold=indexFold) :
                     # Proses Tahap 1
-                    number_of_evaluation_per_fold += self.result(u,indexFold)
+                    number_of_evaluation_per_fold += [self.result(u,indexFold)]
 
-                # Proses Tahap 2
-                mean_evaluation_per_fold = number_of_evaluation_per_fold/len(self.uniqueIdOfUserAndItemTest["users"][indexFold])
-                # print("Tahap 1 =", mean_evaluation_per_fold)
-                result_per_fold.append(mean_evaluation_per_fold)
-            
-            # Proses Tahap 3
-            # print("Tahap 2 =", result_per_fold)
-            total_mean_evaluation = sum(result_per_fold)/len(self.train)
-            # print("Tahap 3 =", total_mean_evaluation)
-            return total_mean_evaluation
+                result_per_fold.append(number_of_evaluation_per_fold)
+
+            return result_per_fold
         
         return self.result()
     

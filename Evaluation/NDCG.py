@@ -13,7 +13,7 @@ class NDCG(Evaluation) :
             return np.array([1 if (self.get_top_n_specific_user(u,indexFold=indexFold)[:i+1][-1] in data_test) and len(data_test) > i else 0 for i in range(self.N)])
 
         return np.array([1 if (self.top_n[:i+1][-1] in self.data_test) and len(self.top_n) > i else 0 for i in range(self.N)])
-
+ 
     def ideal(self,n) :
         return np.array([sum(1/np.log2(np.arange(2,n+2))) for n in range(1,n+1)])
 
@@ -55,7 +55,7 @@ class NDCG(Evaluation) :
         
         """
         if not self.toyData :
-            # list[5]
+            # Ukuran : Jumlah fold
             result_per_fold = []
             for indexFold in range(len(self.train)) :
 
