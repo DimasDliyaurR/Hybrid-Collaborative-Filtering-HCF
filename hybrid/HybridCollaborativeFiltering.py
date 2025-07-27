@@ -7,6 +7,7 @@ from MatrixRating import MatrixRating
 import os
 import joblib
 import time
+from tqdm import tqdm
 
 def HybridCollaborativeFilteringMain(
                 data : str,
@@ -86,7 +87,7 @@ def HybridCollaborativeFilteringMain(
         def main_calculation(self) -> list[list[float]]:
             if self.toyData :
                 result = []
-                for user in range(len(self.matrixRating)) :
+                for user in tqdm(range(len(self.matrixRating)),desc="Prediction Hybrid Collaborative Filtering") :
                     result_inner = []
                     unrated_item = self.getItem(user,interacted=False)
                     for item in range(len(self.matrixRating[user])) :
@@ -95,7 +96,7 @@ def HybridCollaborativeFilteringMain(
                 return result
             
             result = []
-            for indexFold in range(len(self.train)) :
+            for indexFold in tqdm(range(len(self.train)),desc="Prediction Hybrid Collaborative Filtering") :
                 t1 = time.time() if self.time else ""
                 result_train = []
                 for user in range(len(self.train[indexFold])) :
