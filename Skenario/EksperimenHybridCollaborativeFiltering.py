@@ -4,6 +4,7 @@ from hybrid import HCF
 import os
 from tqdm.contrib.itertools import product
 import joblib
+from Evaluation import Evaluation
 
 class EksperimenHybridCollaborativeFiltering() :
 
@@ -17,6 +18,7 @@ class EksperimenHybridCollaborativeFiltering() :
             gamma : float|list[float], 
             N : int,
             n : int,
+            Evaluation : None|Evaluation = None,
             **params,
         ) :
 
@@ -28,6 +30,7 @@ class EksperimenHybridCollaborativeFiltering() :
         self.gamma = gamma
         self.N = N
         self.n = n
+        self.Evaluation = Evaluation
 
         if os.path.exists(path_file) :
             self.result_skenario = joblib.load(path_file)
@@ -44,7 +47,7 @@ class EksperimenHybridCollaborativeFiltering() :
             result = {}
             for gamma_index, k_user_index, k_item_index, alpha_1_index, alpha_2_index in product(self.gamma, self.k_user, self.k_item, alpha_1, alpha_2) :
 
-                hybrid = HCF(self.data,self.object,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index,alpha_1=alpha_1_index,alpha_2=alpha_2_index,N=self.N,n=self.n)
+                hybrid = HCF(self.data,self.object,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index,alpha_1=alpha_1_index,alpha_2=alpha_2_index,N=self.N,n=self.n,Evaluation=self.Evaluation)
 
                 result.setdefault(gamma_index, {}).setdefault(k_user_index, {}).setdefault(k_item_index, {}).setdefault(alpha_1_index, {})[alpha_2_index] = hybrid.result_evaluation
             return result
