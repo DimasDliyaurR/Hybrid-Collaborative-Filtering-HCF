@@ -40,11 +40,11 @@ class DiceCoefficientSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRa
                 self.result_similarity = self.main_calculation()
                 joblib.dump(self.result_similarity,path_file)
                 
-            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData,path_file=path_file_prediction)
+            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData,path_file=path_file_prediction,time=time)
 
         else :
             self.result_similarity = self.main_calculation()
-            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData)
+            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData,time=time)
     
     @override
     def numerator(self, A:list, B:list) -> list[float]:
@@ -93,7 +93,7 @@ class DiceCoefficientSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRa
                     for j in range(i,len(matrix)):
                         if i == j:
                             result_inner[i][j] = 1
-                            time_computation_similarity_per_user[i][j] = 0
+                            time_computation_similarity_per_user[i][j] = 1e-10
                             continue
                         
                         t1 = time.time()

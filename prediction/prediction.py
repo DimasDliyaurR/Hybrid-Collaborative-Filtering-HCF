@@ -17,9 +17,10 @@ class Prediction(Mean):
                 opsional : str|None = None, 
                 prediction : None| list[list[float]] = None, 
                 hybrid : None|bool = False, 
-                k : int|None = None, 
+                k : int|None = None,
                 path_file : str|None = None, 
-                toyData : bool = False
+                toyData : bool = False,
+                time : bool = False
             ) -> None :
         
         super().__init__(data,opsional=opsional,toyData=toyData)
@@ -29,12 +30,12 @@ class Prediction(Mean):
             if not hybrid :
                 self.similarity = similarity
 
-                if os.path.exists(path_file) :
+                if not time and os.path.exists(path_file) :
                     self.prediction = joblib.load(path_file)
                 else :
                     self.result_mean_centered_training_prediction = [transpose(self.result_mean_centered_training[i]).tolist() for i in range(5)] if opsional == "user-based" else self.result_mean_centered_training
                     self.prediction = self.main_prediction_calculation()
-                    joblib.dump(self.prediction,path_file)
+                    joblib.dump(self.prediction,path_file) if not time else ""
             else :
                 self.prediction = prediction      
         else :

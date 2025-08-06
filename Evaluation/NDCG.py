@@ -1,6 +1,6 @@
 from Evaluation import Evaluation
 import numpy as np
-from typing_extensions import override, overload
+from typing_extensions import override
 
 class NDCG(Evaluation) :
 
@@ -8,13 +8,14 @@ class NDCG(Evaluation) :
         super().__init__(data, top_n, path_evaluation=path_evaluation,toyData = toyData, N=N, n=n)
 
     def groundTruth(self, u : None | int = None, indexFold : int|None = None) -> np.array :
+        
         if not self.toyData :
             data_test = self.getItemTest(u,indexFold=indexFold)
             return np.array([1 if (self.get_top_n_specific_user(u,indexFold=indexFold)[:i+1][-1] in data_test) and len(data_test) > i else 0 for i in range(self.N)])
 
         return np.array([1 if (self.top_n[:i+1][-1] in self.data_test) and len(self.top_n) > i else 0 for i in range(self.N)])
- 
-    def ideal(self,n) :
+
+    def ideal(self,n) -> np.array :
         return np.array([sum(1/np.log2(np.arange(2,n+2))) for n in range(1,n+1)])
 
     def ideal_iteration(self,n) -> np.array :

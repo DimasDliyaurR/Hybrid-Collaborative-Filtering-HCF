@@ -76,7 +76,7 @@ def HybridCollaborativeFilteringMain(
 
                 self.result_hybrid = self.main_calculation()
             
-            Prediction.__init__(self,data,prediction=self.result_hybrid,hybrid=True,toyData=toyData)
+            Prediction.__init__(self,data,prediction=self.result_hybrid,hybrid=True,toyData=toyData,time=time)
             object_evaluation.__init__(self,data,self.topN,toyData=toyData,N=N,n=n)
 
         def fusion(self,user : int,item : int,*,indexFold : int|None = None) -> float:
