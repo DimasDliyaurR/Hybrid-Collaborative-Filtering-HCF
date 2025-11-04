@@ -7,11 +7,12 @@ import copy
 import joblib
 from tqdm import tqdm
 
-class Prediction(Mean):
+class Prediction():
     
     def __init__(
                 self,
                 data,
+                mean_object : Mean,
                 similarity : None| list[list[float]] = None,
                 *, 
                 opsional : str|None = None, 
@@ -23,7 +24,10 @@ class Prediction(Mean):
                 time : bool = False
             ) -> None :
         
-        super().__init__(data,opsional=opsional,toyData=toyData)
+        self.mean_object = mean_object
+        self.opsional = opsional
+        self.toyData = toyData
+
         if not self.toyData :
             self.k = k
             
@@ -33,9 +37,9 @@ class Prediction(Mean):
                 if not time and os.path.exists(path_file) :
                     self.prediction = joblib.load(path_file)
                 else :
-                    self.result_mean_centered_training_prediction = [transpose(self.result_mean_centered_training[i]).tolist() for i in range(5)] if opsional == "user-based" else self.result_mean_centered_training
+                    self.result_mean_centered_training_prediction = [transpose(self.mean_object.result_mean_centered_training[i]) for i in range(5)] if opsional == "user-based" else self.mean_object.result_mean_centered_training
                     self.prediction = self.main_prediction_calculation()
-                    joblib.dump(self.prediction,path_file) if not time else ""
+                    # joblib.dump(self.prediction,path_file) if not time else ""
             else :
                 self.prediction = prediction      
         else :
@@ -43,8 +47,8 @@ class Prediction(Mean):
                 self.similarity = similarity if opsional == "user-based" else transpose(similarity)
                 self.data_for_prediction = copy.deepcopy(data)
                 self.matrixRating = data
-                self.reverseMatrixRating = transpose(self.matrixRating).tolist()
-                self.result_mean_centered_for_prediction = transpose(self.result_mean_centered).tolist() if opsional == "user-based" else self.result_mean_centered
+                self.reverseMatrixRating = transpose(self.mean_object.matrixRating).tolist()
+                self.result_mean_centered_for_prediction = transpose(self.mean_object.result_mean_centered).tolist() if opsional == "user-based" else self.result_mean_centered
                 self.k = k
                 self.prediction = self.main_prediction_calculation()
             else :
@@ -71,12 +75,12 @@ class Prediction(Mean):
     def selected_neighborhood(self,u,i, indexFold : None|int = None) -> list[float]:
 
         if self.toyData :
-            indices = list(set(self.getUser(i))) if self.opsional == "user-based" else list(set(self.getItem(u)))
+            indices = list(set(self.mean_object.getUser(i))) if self.opsional == "user-based" else list(set(self.mean_object.getItem(u)))
             similarity_selected = self.similarity[u if self.opsional == "user-based" else i]
         else :
             similarity_selected = self.similarity[indexFold][u if self.opsional == "user-based" else i]
-            indices = list(set(self.getUser(i, indexFold)) - set([u])) if self.opsional == "user-based" else list(set(self.getItem(u,indexFold)) - set([i]))
-
+            indices = list(set(self.mean_object.getUser(i, indexFold)) - set([u])) if self.opsional == "user-based" else list(set(self.mean_object.getItem(u,indexFold)) - set([i]))
+        
         if len(indices) > 1 :
             indices = sorted(indices,key=lambda x : similarity_selected[x],reverse=True)
         else :
@@ -89,10 +93,10 @@ class Prediction(Mean):
         
         if self.toyData :
             nearestNeighborhood = self.selected_neighborhood(u,i)
-            average = self.result_mean[u if self.opsional == "user-based" else i]
+            average = self.mean_object.result_mean[u if self.opsional == "user-based" else i]
         else :
             nearestNeighborhood = self.selected_neighborhood(u,i, indexFold)
-            average = self.result_mean_training[indexFold][u if self.opsional == "user-based" else i]
+            average = self.mean_object.result_mean_training[indexFold][u if self.opsional == "user-based" else i]
 
         if len(nearestNeighborhood) != 0 :
             numerator = self.__numerator(u,i,nearestNeighborhood,indexFold)
@@ -111,10 +115,10 @@ class Prediction(Mean):
                     result[u][i] = self.prediction_calculation(u,i) if self.matrixRating[u][i] == 0 else self.matrixRating[u][i]
             return result
         else :
-            result = self.train.copy()
-            for indexFold in tqdm(range(len(self.train)),desc="Prediction") :
-                for u in range(len(self.train[indexFold])) :
-                    for i in self.getItem(u,indexFold=indexFold, interacted=False) :
+            result = self.mean_object.train.copy()
+            for indexFold in tqdm(range(len(self.mean_object.train)),desc="Prediction") :
+                for u in range(len(self.mean_object.train[indexFold])) :
+                    for i in self.mean_object.getItem(u,indexFold=indexFold, interacted=False) :
                         result[indexFold][u][i] = self.prediction_calculation(u,i,indexFold)
             return result
     
@@ -122,7 +126,7 @@ class Prediction(Mean):
         if self.toyData :
             result = []
             for i in range(len(self.data_for_prediction) ) :
-                unratedItem = self.getItem(i,interacted=False)
+                unratedItem = self.mean_object.getItem(i,interacted=False)
                 if len(unratedItem) > 1 :
 
                     if len(unratedItem) == 0 :
@@ -137,10 +141,10 @@ class Prediction(Mean):
             return result
         else :
             result = []
-            for indexFold in range(len(self.train)) :
+            for indexFold in range(len(self.mean_object.train)) :
                 result_inner = []
-                for u in range(len(self.train[indexFold])) :
-                    unratedItem = self.getItem(u,indexFold=indexFold,interacted=False)
+                for u in range(len(self.mean_object.train[indexFold])) :
+                    unratedItem = self.mean_object.getItem(u,indexFold=indexFold,interacted=False)
                     if len(unratedItem) > 1 :
                         if len(unratedItem) == 0 :
                             result_inner.append([])

@@ -1,5 +1,5 @@
 import DistanceBased.similarities as S
-from DistanceBased import Similarity
+from DistanceBased import Similarity, Mean
 from hybrid import HCF
 import os
 from tqdm.contrib.itertools import product
@@ -29,6 +29,9 @@ class EksperimenHybridCollaborativeFiltering() :
         self.N = N
         self.n = n
 
+        self.mean_user = Mean("data/ml-100k",opsional="user-based")
+        self.mean_item = Mean("data/ml-100k",opsional="item-based")
+
         if os.path.exists(path_file) :
             self.result_skenario = joblib.load(path_file)
         else :
@@ -44,7 +47,7 @@ class EksperimenHybridCollaborativeFiltering() :
             result = {}
             for gamma_index, k_user_index, k_item_index, alpha_1_index, alpha_2_index in product(self.gamma, self.k_user, self.k_item, alpha_1, alpha_2) :
 
-                hybrid = HCF(self.data,self.object,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index,alpha_1=alpha_1_index,alpha_2=alpha_2_index,N=self.N,n=self.n)
+                hybrid = HCF(self.data,self.object,mean_object_user=self.mean_user,mean_object_item=self.mean_item,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index,alpha_1=alpha_1_index,alpha_2=alpha_2_index,N=self.N,n=self.n)
 
                 result.setdefault(gamma_index, {}).setdefault(k_user_index, {}).setdefault(k_item_index, {}).setdefault(alpha_1_index, {})[alpha_2_index] = hybrid.result_evaluation
             return result
@@ -52,7 +55,7 @@ class EksperimenHybridCollaborativeFiltering() :
             result = {}
             for gamma_index, k_user_index, k_item_index in product(self.gamma, self.k_user, self.k_item) :
                 
-                hybrid = HCF(self.data,self.object,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index, N=self.N,n=self.n)
+                hybrid = HCF(self.data,self.object,mean_object_user=self.mean_user,mean_object_item=self.mean_item,k_user=k_user_index,k_item=k_item_index,gamma=gamma_index, N=self.N,n=self.n)
 
                 result.setdefault(gamma_index, {}).setdefault(k_user_index, {})[k_item_index] = hybrid.result_evaluation
 

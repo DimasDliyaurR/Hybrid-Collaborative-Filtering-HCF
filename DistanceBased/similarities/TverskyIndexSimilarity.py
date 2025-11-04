@@ -1,4 +1,4 @@
-import DistanceBased as SDB
+from DistanceBased import Similarity , Mean
 import prediction as P
 from tqdm import tqdm
 
@@ -11,15 +11,13 @@ from numpy import (
     array
 )
 
-from MatrixRating import MatrixRating
-
 import os
 import joblib
 import time
 
-class TverskyIndexSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
-    
-    def __init__(self, data, *, toyData : bool|None = False, opsional="user-based",k=2,alpha_1=0.7,alpha_2=0.2 ,time  : bool = False) -> None :
+class TverskyIndexSimilarity(Similarity) :
+
+    def __init__(self, data, mean_object : Mean, *, toyData : bool|None = False, opsional="user-based",k=2,alpha_1=0.7,alpha_2=0.2 ,time  : bool = False) -> None :
         """
         Tversky Index similarity function calculation
 
@@ -89,8 +87,11 @@ class TverskyIndexSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRatin
         Time Computation
         >> TI(path_data,k=5,opsional="user-based",alpha_1=0.7,alpha_2=0.3,time=True)
         """
+
         
-        SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
+        self.mean_object = mean_object
+        self.opsional = opsional
+        self.toyData = toyData
         
         self.alpha_1 = alpha_1
         self.alpha_2 = alpha_2
@@ -109,14 +110,13 @@ class TverskyIndexSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRatin
                 self.result_similarity = joblib.load(path_file)
             else :
                 self.result_similarity = self.main_calculation()
-                joblib.dump(self.result_similarity,path_file) if not time else ""
+                # joblib.dump(self.result_similarity,path_file) if not time else ""
         
-                
-            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData,path_file=path_file_prediction,time=time)
+            super().__init__(data, mean_object, self.result_similarity, opsional=opsional, k=k, path_file=path_file, toyData=toyData, time=time)
             
         else :
             self.result_similarity = self.main_calculation()
-            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData,time=time)
+            super().__init__(data, mean_object, self.result_similarity, opsional=opsional, k=k, path_file=path_file, toyData=toyData, time=time)
         
 
     def __checkSymmetric(self) -> bool :
@@ -138,7 +138,7 @@ class TverskyIndexSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRatin
         -------
         float
         """
-        return len( set(A) & set(B) )
+        return len( (A) & (B) )
 
     @override
     def denominator(self, A:list, B:list) -> float:
@@ -156,7 +156,7 @@ class TverskyIndexSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRatin
         -------
             float
         """
-        return len( set(A) & set(B) ) + (self.alpha_1 * len( set(A) - set(B) )) + self.alpha_2 * len( set(B) - set(A) )
+        return len( (A) & (B) ) + (self.alpha_1 * len( (A) - (B) )) + self.alpha_2 * len( (B) - (A) )
     
     @override
     def similarity_calculation(self,A, B, indexFold : int|None = None) -> float :
@@ -174,11 +174,10 @@ class TverskyIndexSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRatin
         -------
             float
         """
-        setA = set(self.getItem(A,indexFold) if self.opsional == "user-based" else self.getUser(A,indexFold))
-        setB = set(self.getItem(B,indexFold) if self.opsional == "user-based" else self.getUser(B,indexFold))
+        setA = set(self.mean_object.getItem(A,indexFold) if self.opsional == "user-based" else self.mean_object.getUser(A,indexFold))
+        setB = set(self.mean_object.getItem(B,indexFold) if self.opsional == "user-based" else self.mean_object.getUser(B,indexFold))
 
         denom = self.denominator(setA,setB).real
-        
         return (self.numerator(setA,setB).real / denom) if denom != 0 else 0
 
     @override
@@ -220,16 +219,15 @@ class TverskyIndexSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRatin
             if self.__checkSymmetric() :
                 result = []
                 
-                for indexFold in tqdm(range(len(self.train)),desc="Tversky Index") :
-                    matrix = self.train[indexFold] if self.opsional == "user-based" else transpose(self.train[indexFold])
+                for indexFold in tqdm(range(len(self.mean_object.train)),desc="Tversky Index") :
+                    matrix = self.mean_object.train[indexFold] if self.opsional == "user-based" else transpose(self.mean_object.train[indexFold])
                     
-                    temp = array(zeros((len(matrix),len(matrix)))).tolist()
+                    temp = array(zeros((len(matrix),len(matrix))))
+                    result_inner = temp.copy()
+                    time_computation_similarity_per_user = temp.copy() if self.time else ""
 
                     time_computation = [] if self.time else ""
                     for i in range(len(matrix)):
-                        
-                        result_inner = temp.copy()
-                        time_computation_similarity_per_user = temp.copy() if self.time else ""
                         
                         for j in range(i,len(matrix)) :
 
@@ -256,8 +254,8 @@ class TverskyIndexSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRatin
 
             result = []
             
-            for indexFold in tqdm(range(len(self.train)),desc="Tversky Index") :
-                matrix = self.train[indexFold] if self.opsional == "user-based" else transpose(self.train[indexFold])
+            for indexFold in tqdm(range(len(self.mean_object.train)),desc="Tversky Index") :
+                matrix = self.mean_object.train[indexFold] if self.opsional == "user-based" else transpose(self.mean_object.train[indexFold])
 
                 result_train = []
                 time_computation = [] if self.time else ""

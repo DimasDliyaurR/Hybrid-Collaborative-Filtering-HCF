@@ -1,6 +1,7 @@
 from abc import abstractmethod
+from prediction import Prediction
 
-class Similarity :
+class Similarity(Prediction) :
     '''
     Property of Distance based when calculation similarity
 
@@ -18,6 +19,9 @@ class Similarity :
         main_calculation(u, v, matrix)
             Provide measurement similarity of the user-item matrix rating as a matrix
     '''
+
+    def __init__(self, data, mean_object, similarity = None, *, opsional = None, hybrid = False, k = None, path_file = None, toyData = False, time = False):
+        super().__init__(data, mean_object, similarity, opsional=opsional, hybrid=hybrid, k=k, path_file=path_file, toyData=toyData, time=time)
 
     @property
     @abstractmethod
