@@ -4,6 +4,7 @@ from hybrid import HCF
 import os
 from tqdm.contrib.itertools import product
 import joblib
+from Evaluation import Evaluation
 
 class EksperimenHybridCollaborativeFiltering() :
 
@@ -17,6 +18,7 @@ class EksperimenHybridCollaborativeFiltering() :
             gamma : float|list[float], 
             N : int,
             n : int,
+            Evaluation : None|Evaluation = None,
             **params,
         ) :
 
@@ -28,6 +30,7 @@ class EksperimenHybridCollaborativeFiltering() :
         self.gamma = gamma
         self.N = N
         self.n = n
+        self.Evaluation = Evaluation
 
         self.mean_user = Mean("data/ml-100k",opsional="user-based")
         self.mean_item = Mean("data/ml-100k",opsional="item-based")
