@@ -1,5 +1,4 @@
 import pandas as pd
-from prediction import Prediction
 from DistanceBased import Similarity, Mean
 import DistanceBased.similarities as S
 from Evaluation import NDCG, Evaluation
@@ -8,7 +7,7 @@ import os
 import joblib
 import copy
 import time
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 def HybridCollaborativeFilteringMain(
                 data : str,
@@ -23,12 +22,12 @@ def HybridCollaborativeFilteringMain(
                 toyData : None|bool = False, 
                 N : int = 100,
                 n : int|None = None,
-                path_file : str|None,
+                path_file : str|None = None,
                 **kwargs
                 ) :
     
     
-    class HybridCollaborativeFiltering(object_evaluation,Prediction,MatrixRating) :
+    class HybridCollaborativeFiltering(object_evaluation,MatrixRating) :
 
         def __init__(self,
                     data : str,
@@ -42,7 +41,7 @@ def HybridCollaborativeFilteringMain(
                     toyData : None|bool = False, 
                     N : int = 100,
                     n : int|None = None,
-                    path_file : str|None,
+                    path_file : str|None = None,
                     time : bool = False,
                     **kwargs
                 ) -> None :
@@ -52,6 +51,9 @@ def HybridCollaborativeFilteringMain(
             self.time = time
             self.mean_object = mean_object_user
 
+            if not isinstance(self.mean_object,MatrixRating) :
+                raise ValueError("Arg mean matrix tidak valid!")
+
             if not toyData and path_file != None and os.path.exists(path_file) and not time :
                 self.result_hybrid = joblib.load(path_file)
             else :
@@ -60,20 +62,16 @@ def HybridCollaborativeFilteringMain(
                     if "alpha_1" not in kwargs and "alpha_2" not in kwargs :
                         raise ValueError("Parameter Alpha 1 dan alpha 2 seharusnya ada")
                     
-                    self.user_based = object(data,mean_object_user,opsional="user-based",k=k_user,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData,time=time)
-                    
-                    self.item_based = object(data,mean_object_item,opsional="item-based",k=k_item,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData,time=time)
-                    
+                    self.user_based = object(data,mean_object_user,opsional="user-based",k=k_user,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData,time=time,top_n_condition=False)
+                    self.item_based = object(data,mean_object_item,opsional="item-based",k=k_item,alpha_1=kwargs["alpha_1"],alpha_2=kwargs["alpha_2"],toyData=toyData,time=time,top_n_condition=False)
                 else :
-                    self.user_based = object(data,mean_object_user,opsional="user-based",k=k_user,toyData=toyData,time=time)
-                    self.item_based = object(data,mean_object_item,opsional="item-based",k=k_item,toyData=toyData,time=time)
+                    self.user_based = object(data,mean_object_user,opsional="user-based",k=k_user,toyData=toyData,time=time,top_n_condition=False)
+                    self.item_based = object(data,mean_object_item,opsional="item-based",k=k_item,toyData=toyData,time=time,top_n_condition=False)
 
                 self.toyData = toyData
 
                 if not toyData and time :
                     self.time_computation_prediction_per_fold = []
-
-                MatrixRating.__init__(self,data,toyData=toyData)
 
                 self.prediction_user_based = self.user_based.get_prediction_array()
                 
@@ -84,7 +82,7 @@ def HybridCollaborativeFilteringMain(
 
                 self.topN = self.get_top_n()
             
-            object_evaluation.__init__(self,data,self.topN,toyData=toyData,N=N,n=n)
+            object_evaluation.__init__(self,data,self.topN,matrix_object=mean_object_user,toyData=toyData,N=N,n=n)
 
         def fusion(self,user : int,item : int,*,indexFold : int|None = None) -> float:
             if self.toyData :
@@ -103,14 +101,14 @@ def HybridCollaborativeFilteringMain(
                 return result
             
             result = []
-            for indexFold in tqdm(range(len(self.train)),desc="Prediction Hybrid Collaborative Filtering") :
+            for indexFold in tqdm(range(len(self.mean_object.train)),desc="Prediction Hybrid Collaborative Filtering") :
                 t1 = time.time() if self.time else ""
                 result_train = []
-                for user in range(len(self.train[indexFold])) :
+                for user in range(len(self.mean_object.train[indexFold])) :
                     result_inner = []
                     unrated_item = self.mean_object.getItem(user,indexFold=indexFold,interacted=False)
-                    for item in range(len(self.train[indexFold][user])) :
-                        result_inner.append(self.fusion(user,item,indexFold=indexFold) if item in unrated_item else self.train[indexFold][user][item])
+                    for item in range(len(self.mean_object.train[indexFold][user])) :
+                        result_inner.append(self.fusion(user,item,indexFold=indexFold) if item in unrated_item else self.mean_object.train[indexFold][user][item])
                     result_train.append(result_inner)
                 result.append(result_train)
                 t2 = time.time() if self.time else ""
@@ -120,7 +118,7 @@ def HybridCollaborativeFilteringMain(
         def get_top_n(self) :
             if self.toyData :
                 result = []
-                for i in range(len(self.result_hybrid) ) :
+                for i in tqdm(range(len(self.result_hybrid)),desc="Top-N Hybrid") :
                     unratedItem = self.mean_object.getItem(i,interacted=False)
                     if len(unratedItem) > 1 :
 
@@ -136,7 +134,7 @@ def HybridCollaborativeFilteringMain(
                 return result
             else :
                 result = []
-                for indexFold in range(len(self.mean_object.train)) :
+                for indexFold in tqdm(range(len(self.mean_object.train)),desc="Top-N Hybrid") :
                     result_inner = []
                     for u in range(len(self.mean_object.train[indexFold])) :
                         unratedItem = self.mean_object.getItem(u,indexFold=indexFold,interacted=False)

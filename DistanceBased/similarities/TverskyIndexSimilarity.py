@@ -1,6 +1,7 @@
 from DistanceBased import Similarity , Mean
 import prediction as P
-from tqdm import tqdm
+from tqdm.notebook import tqdm
+from prediction import Prediction
 
 from typing_extensions import override
 
@@ -15,9 +16,9 @@ import os
 import joblib
 import time
 
-class TverskyIndexSimilarity(Similarity) :
+class TverskyIndexSimilarity(Similarity, Prediction) :
 
-    def __init__(self, data, mean_object : Mean, *, toyData : bool|None = False, opsional="user-based",k=2,alpha_1=0.7,alpha_2=0.2 ,time  : bool = False) -> None :
+    def __init__(self, data, mean_object : Mean, *, toyData : bool|None = False, opsional="user-based",k=2,alpha_1=0.7,alpha_2=0.2 ,time  : bool = False, top_n_condition = True) -> None :
         """
         Tversky Index similarity function calculation
 
@@ -87,7 +88,6 @@ class TverskyIndexSimilarity(Similarity) :
         Time Computation
         >> TI(path_data,k=5,opsional="user-based",alpha_1=0.7,alpha_2=0.3,time=True)
         """
-
         
         self.mean_object = mean_object
         self.opsional = opsional
@@ -100,11 +100,9 @@ class TverskyIndexSimilarity(Similarity) :
         if not toyData and time :
             self.time_computation_similarity_per_fold = []
 
-
         if not toyData :
             
             path_file = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/tversky_index_similarity.joblib"
-            path_file_prediction = "cache/tversky_index/" + ("user_based" if opsional == "user-based" else "item_based") + f"/{str(alpha_1)}/{str(alpha_2)}/prediction/{k}/tversky_index_prediction.joblib"
             
             if not time and os.path.exists(path_file) :
                 self.result_similarity = joblib.load(path_file)
@@ -112,16 +110,16 @@ class TverskyIndexSimilarity(Similarity) :
                 self.result_similarity = self.main_calculation()
                 # joblib.dump(self.result_similarity,path_file) if not time else ""
         
-            super().__init__(data, mean_object, self.result_similarity, opsional=opsional, k=k, path_file=path_file, toyData=toyData, time=time)
+            Prediction.__init__(self,data,mean_object, self.result_similarity, opsional=opsional, k=k, path_file=path_file, toyData=toyData, time=time, top_n_condition=top_n_condition)
             
         else :
             self.result_similarity = self.main_calculation()
-            super().__init__(data, mean_object, self.result_similarity, opsional=opsional, k=k, path_file=path_file, toyData=toyData, time=time)
+            Prediction.__init__(self,data,mean_object, self.result_similarity, opsional=opsional, k=k, path_file=path_file, toyData=toyData, time=time, top_n_condition=top_n_condition)
         
 
     def __checkSymmetric(self) -> bool :
         """
-        Check the value of alpha_1 and alpha_2 are same
+        If both of parameters tversky are same, The result will gain symmetric matrix   
         
         Returns
         -------
@@ -161,14 +159,14 @@ class TverskyIndexSimilarity(Similarity) :
     @override
     def similarity_calculation(self,A, B, indexFold : int|None = None) -> float :
         """
-        Calculates the overall Tversky Index similarity function for sets A and B at fold indexFold
+        Computing of similarity between set A and set B
 
         Parameters:
         -----------
         A : list
-            Himpunan pertama (misal: daftar item yang telah diberi rating oleh user A)
+            First set (misal: daftar item yang telah diberi rating oleh user A)
         B : list
-            Himpunan kedua (misal: daftar item yang telah diberi rating oleh user B)
+            Second set (misal: daftar item yang telah diberi rating oleh user B)
         
         Return:
         -------
@@ -179,33 +177,63 @@ class TverskyIndexSimilarity(Similarity) :
 
         denom = self.denominator(setA,setB).real
         return (self.numerator(setA,setB).real / denom) if denom != 0 else 0
-
-    @override
-    def main_calculation(self) -> list[list[float]]:
-        """
-        Calculates the Tversky Index similarity matrix for all users (user-based) or items (item-based).
-        Handles both toy data and real datasets, supporting symmetric and non-symmetric similarity computations.
-        For real datasets, also tracks computation time per similarity calculation.
-       
-        Return:
-        -------
-            list[list[float]]
-        """
-        if self.toyData :
+    
+    def __computing_asymmetric(self) :
+         if self.toyData :
             matrix = self.matrixRating if self.opsional == "user-based" else self.reverseMatrixRating
             result = [[] for _ in range(len(matrix))]
             
-            if self.__checkSymmetric() :
-                for i in tqdm(range(len(matrix))):
-                    for j in range(i,len(matrix)):
+            for i in tqdm(range(len(matrix))):
+                for j in range(i,len(matrix)):
+                    if i == j:
+                        result[i].append(1)
+                        continue
+                    similarity_result = self.similarity_calculation(int(i), int(j))
+                    result[i].append(similarity_result)
+                    result[j].append(similarity_result)
+            return result
+         else :
+            result = []
+                
+            for indexFold in tqdm(range(len(self.mean_object.train)),desc="Tversky Index") :
+                matrix = self.mean_object.train[indexFold] if self.opsional == "user-based" else transpose(self.mean_object.train[indexFold])
+                
+                temp = array(zeros((len(matrix),len(matrix))))
+                result_inner = temp.copy()
+                time_computation_similarity_per_user = temp.copy() if self.time else ""
+
+                time_computation = [] if self.time else ""
+                for i in range(len(matrix)):
+                    
+                    for j in range(i,len(matrix)) :
+
                         if i == j:
-                            result[i].append(1)
+                            result_inner[i][j] = 1
+                            if self.time :
+                                time_computation_similarity_per_user[i][j] = 1e-10
                             continue
-                        similarity_result = self.similarity_calculation(int(i), int(j))
-                        result[i].append(similarity_result)
-                        result[j].append(similarity_result)
-                return result
-            
+
+                        t1 = time.time() if self.time else ""
+                        similarity_result = self.similarity_calculation(i, j, indexFold)
+                        t2 = time.time() if self.time else ""
+
+                        if self.time :
+                            time_computation_similarity_per_user += [t2-t1]
+
+                        result_inner[j][i] = similarity_result
+                        result_inner[i][j] = similarity_result
+
+                        if self.time :
+                            time_computation_similarity_per_user[j][i] = t2-t1
+
+                    result.append(result_inner)
+                self.time_computation_similarity_per_fold.append(time_computation) if self.time else ""
+            return result
+    
+    def __computing_symmetric(self) :
+        if self.toyData :
+            matrix = self.matrixRating if self.opsional == "user-based" else self.reverseMatrixRating
+            result = [[] for _ in range(len(matrix))]
             for i in tqdm(range(len(matrix))):
                 for j in range(len(matrix)):
                     if i == j:
@@ -214,44 +242,7 @@ class TverskyIndexSimilarity(Similarity) :
                     similarity_result = self.similarity_calculation(int(i), int(j))
                     result[i].append(similarity_result)
             return result
-            
         else :
-            if self.__checkSymmetric() :
-                result = []
-                
-                for indexFold in tqdm(range(len(self.mean_object.train)),desc="Tversky Index") :
-                    matrix = self.mean_object.train[indexFold] if self.opsional == "user-based" else transpose(self.mean_object.train[indexFold])
-                    
-                    temp = array(zeros((len(matrix),len(matrix))))
-                    result_inner = temp.copy()
-                    time_computation_similarity_per_user = temp.copy() if self.time else ""
-
-                    time_computation = [] if self.time else ""
-                    for i in range(len(matrix)):
-                        
-                        for j in range(i,len(matrix)) :
-
-                            if i == j:
-                                result_inner[i][j] = 1
-                                time_computation_similarity_per_user[i][j] = 1e-10 if self.time else ""
-                                continue
-
-                            t1 = time.time() if self.time else ""
-                            similarity_result = self.similarity_calculation(i, j, indexFold)
-                            t2 = time.time() if self.time else ""
-                            time_computation_similarity_per_user += [t2-t1] if self.time else ""
-
-                            result_inner[j][i] = similarity_result
-                            result_inner[i][j] = similarity_result
-
-                            if self.time :
-                                time_computation_similarity_per_user[j][i] = t2-t1
-                                time_computation_similarity_per_user[i][j] = t2-t1
-
-                        result.append(result_inner)
-                    self.time_computation_similarity_per_fold.append(time_computation) if self.time else ""
-                return result
-
             result = []
             
             for indexFold in tqdm(range(len(self.mean_object.train)),desc="Tversky Index") :
@@ -283,9 +274,23 @@ class TverskyIndexSimilarity(Similarity) :
             
             return result
 
+    @override
+    def main_calculation(self) -> list[list[float]]:
+        """
+        Core functionality of the Object
+       
+        Return:
+        -------
+            list[list[float]]
+        """
+        if self.__checkSymmetric() :
+            return self.__computing_symmetric()
+        else :
+            return self.__computing_asymmetric()
+
     def show_similarity(self,indexFold : int|None = None) :
         """
-        Displays the similarity calculation results
+        Displays the result of similarity
 
         Parameters:
         -----------

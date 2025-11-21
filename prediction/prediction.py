@@ -5,7 +5,7 @@ from operator import itemgetter,mul
 import os
 import copy
 import joblib
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 class Prediction():
     
@@ -21,7 +21,8 @@ class Prediction():
                 k : int|None = None,
                 path_file : str|None = None, 
                 toyData : bool = False,
-                time : bool = False
+                time : bool = False,
+                top_n_condition : bool = True,
             ) -> None :
         
         self.mean_object = mean_object
@@ -55,8 +56,9 @@ class Prediction():
                 self.data_for_prediction = copy.deepcopy(data)
                 self.prediction = prediction      
 
-        self.topN = self.get_top_n()
-
+        if top_n_condition :
+            self.topN = self.get_top_n()
+        
     def __numerator(self,u,i,nearestNeighborhood, indexFold : int|None = None) -> float :
         if self.toyData :
             return sum( list( 

@@ -1,5 +1,5 @@
-import DistanceBased as SDB
-import prediction as P
+from DistanceBased import Mean, Similarity
+from prediction import Prediction
 
 from typing_extensions import override
 
@@ -10,41 +10,40 @@ from numpy import (
     array
 )
 
-from MatrixRating import MatrixRating
-# from Evaluation import NDCG
 import os
 import joblib
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 import time
 
-class DiceCoefficientSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRating) :
+class DiceCoefficientSimilarity(Similarity,Prediction) :
     
-    def __init__(self, data, * ,toyData : bool|None = False, opsional="user-based",k=2,time : bool = False):
-        SDB.Mean.__init__(self,data,opsional=opsional,toyData=toyData)
+    def __init__(self, data, mean_object : Mean, * ,toyData : bool|None = False, opsional="user-based",k=2,time : bool = False,top_n_condition = True):
 
         self.time = time
+        self.mean_object = mean_object
+        self.opsional = opsional
 
         if not toyData and time : 
             self.time_computation_similarity_per_fold = []
 
+        self.toyData = toyData
+
         if not toyData :
             
             path_file = "cache/dice_coefficient/" + ("user_based" if opsional == "user-based" else "item_based") + f"/dice_coefficient_similarity.joblib"
-            path_file_prediction = "cache/dice_coefficient/" + ("user_based" if opsional == "user-based" else "item_based") + f"/prediction/{k}/dice_coefficient_prediction.joblib"
             
 
             if not time and os.path.exists(path_file) :
                 self.result_similarity = joblib.load(path_file)
             else :
                 self.result_similarity = self.main_calculation()
-                joblib.dump(self.result_similarity,path_file)
+                # joblib.dump(self.result_similarity,path_file)
                 
-            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData,path_file=path_file_prediction,time=time)
-
+            Prediction.__init__(self,data,mean_object, self.result_similarity, opsional=opsional, k=k, path_file=path_file, toyData=toyData, time=time, top_n_condition=top_n_condition)
         else :
             self.result_similarity = self.main_calculation()
-            P.Prediction.__init__(self,data,self.result_similarity,opsional=opsional,k=k,toyData=toyData,time=time)
+            Prediction.__init__(self,data,mean_object, self.result_similarity, opsional=opsional, k=k, path_file=path_file, toyData=toyData, time=time, top_n_condition=top_n_condition)
     
     @override
     def numerator(self, A:list, B:list) -> list[float]:
@@ -56,8 +55,8 @@ class DiceCoefficientSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRa
     
     @override
     def similarity_calculation(self,A, B, indexFold : int|None = None) -> float :
-        setA = set(self.getItem(A,indexFold) if self.opsional == "user-based" else self.getUser(A,indexFold))
-        setB = set(self.getItem(B,indexFold) if self.opsional == "user-based" else self.getUser(B,indexFold))
+        setA = set(self.mean_object.getItem(A,indexFold) if self.opsional == "user-based" else self.mean_object.getUser(A,indexFold))
+        setB = set(self.mean_object.getItem(B,indexFold) if self.opsional == "user-based" else self.mean_object.getUser(B,indexFold))
 
         denom = self.denominator(setA,setB).real
         
@@ -66,7 +65,7 @@ class DiceCoefficientSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRa
     @override
     def main_calculation(self):
         if self.toyData :
-            matrix = self.matrixRating if self.opsional == "user-based" else self.reverseMatrixRating
+            matrix = self.mean_object.matrixRating if self.opsional == "user-based" else self.mean_object.reverseMatrixRating
             result = [[] for _ in range(len(matrix))]
             
             for i in tqdm(range(len(matrix)),desc="Dice Coefficient"):
@@ -81,34 +80,40 @@ class DiceCoefficientSimilarity(SDB.Similarity, P.Prediction, SDB.Mean, MatrixRa
             
         else :
             result = []
-            for indexFold in tqdm(range(len(self.train)),desc="Dice Coefficient") :
+            for indexFold in tqdm(range(len(self.mean_object.train)),desc="Dice Coefficient") :
 
-                matrix = self.train[indexFold] if self.opsional == "user-based" else transpose(self.train[indexFold])
+                matrix = self.mean_object.train[indexFold] if self.opsional == "user-based" else transpose(self.mean_object.train[indexFold])
                 
                 temp = array(zeros((len(matrix),len(matrix)))).tolist()
                 for i in range(len(matrix)):
                     
                     result_inner = temp.copy()
-                    time_computation_similarity_per_user = temp.copy()
+                    if self.time :
+                        time_computation_similarity_per_user = temp.copy()
                     for j in range(i,len(matrix)):
                         if i == j:
                             result_inner[i][j] = 1
-                            time_computation_similarity_per_user[i][j] = 1e-10
+                            if self.time :
+                                time_computation_similarity_per_user[i][j] = 1e-10
                             continue
                         
-                        t1 = time.time()
+                        if self.time :
+                            t1 = time.time()
                         similarity_result = self.similarity_calculation(i, j, indexFold)
-                        t2 = time.time()
+                        
+                        if self.time :
+                            t2 = time.time()
                         
                         result_inner[j][i] = similarity_result
                         result_inner[i][j] = similarity_result
                         
-                        time_computation_similarity_per_user[j][i] = t2-t1
-                        time_computation_similarity_per_user[i][j] = t2-t1
+                        if self.time :
+                            time_computation_similarity_per_user[j][i] = t2-t1
+                            time_computation_similarity_per_user[i][j] = t2-t1
 
                     result.append(result_inner)
-                
-                self.time_computation_similarity_per_fold.append(time_computation_similarity_per_user)
+                if self.time :
+                    self.time_computation_similarity_per_fold.append(time_computation_similarity_per_user)
             return result
         
     def similarity_result(self) -> list[list[float]]:

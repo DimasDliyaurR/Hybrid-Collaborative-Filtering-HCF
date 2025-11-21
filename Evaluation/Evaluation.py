@@ -1,19 +1,18 @@
 from MatrixRating import MatrixRating
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 
 class Evaluation(MatrixRating) :
 
-    def __init__(self,data, top_n : list[list[list[int]]], *, path_evaluation : str = None,toyData : bool, N : int = 30, n : int|None = 20) -> None:
+    def __init__(self,data, top_n : list[list[list[int]]], *, matrix_object : MatrixRating, path_evaluation : str = None,toyData : bool, N : int = 30, n : int|None = 20) -> None:
 
         self.N = N
         self.n = n
         self.top_n = top_n
-
+        self.matrix_object = matrix_object
+        self.toyData = toyData
+        
         if toyData :
-            self.toyData = toyData
             self.data_test = data
-        else :
-            MatrixRating.__init__(self,data,toyData=toyData)
 
         self.result_evaluation = self.main_calculation_evaluation()
 
@@ -39,11 +38,11 @@ class Evaluation(MatrixRating) :
         """
         if not self.toyData :
             result_per_fold = []
-            for indexFold in tqdm(range(len(self.train))) :
+            for indexFold in tqdm(range(len(self.matrix_object.train)),desc="Evaluation") :
 
                 number_of_evaluation_per_fold = []
 
-                for u in self.getUniqueIdOfUserTest(indexFold=indexFold) :
+                for u in self.matrix_object.getUniqueIdOfUserTest(indexFold=indexFold) :
                     # Proses Tahap 1
                     number_of_evaluation_per_fold += [self.result(u,indexFold)]
 
